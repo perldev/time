@@ -39,7 +39,7 @@ websocket_handle({text, Msg}, Req, State =  #chat_state{index=Index}) ->
 		 [{?MODULE, ?LINE}, Req, State]),
     {UserId, Req1} = auth_user(Req),
     ?CONSOLE_LOG(" Req: ~p ~n", [Message]),
-    Res = process(UserId, State),
+    Res = process(UserId),
     NewState = State#chat_state{index=Index+1},
     Req2 = cowboy_req:compact(Req1),
     ?CONSOLE_LOG("~p send back: ~p ~n",
