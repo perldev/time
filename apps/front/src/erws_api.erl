@@ -4,7 +4,9 @@
 
 
 % Behaviour cowboy_http_handler
--export([init/3, handle/2, terminate/3]).
+-export([init/3, handle/2, terminate/3,load_user_session/1, django_session_key/1,
+         hexstring/1, get_key_dict/3,get_usd_rate/1, get_user_state/2, 
+         get_user_state/3, get_state/1, get_time/1, json_encode/1]).
 
 % Behaviour cowboy_http_websocket_handler
 
@@ -171,7 +173,7 @@ process(Path, _UserId, Body, Req, State)->
      false_response(Req, State).
     
  
-load_user_session(SessionKey, State)->
+load_user_session(SessionKey)->
   case mcd:get(?LOCAL_CACHE, SessionKey) of
     {ok, Val}->
 	% add saving to localcache
@@ -202,7 +204,7 @@ auth_user(Req, Body, State)->
                               {undefined, Req5}
 	    end;
 	  Session->
-	      SessionObj =  load_user_session(django_session_key(CookieSession), State),
+	      SessionObj =  load_user_session(django_session_key(CookieSession)),
               ?CONSOLE_LOG(" load session  ~n",[]),
 	      { {session, SessionObj, CookieSession}, Req5}
       end     

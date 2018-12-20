@@ -32,11 +32,8 @@
 -record(
         chat_state,{
                start,
-               last_post = 0,
                index = 0,
-               username = "",
                ip,
-               last_msg
         }
 
 ).

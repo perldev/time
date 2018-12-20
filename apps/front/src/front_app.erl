@@ -16,7 +16,7 @@
 routes() ->
     cowboy_router:compile([{'_',
 			    [
-			     {"/chat", erws_handler, []},
+			     {"/wstime", erws_handler, []},
 			     {"/[...]", erws_api, dict:new()},
 			     {"/static/[...]", cowboy_static,
 			      [{directory, <<"static">>},

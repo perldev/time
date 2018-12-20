@@ -31,20 +31,20 @@ websocket_init(_Any, Req, []) ->
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
     Req2 = cowboy_req:compact(Req_2),
-    State = #chat_state{ip = IP,   start = now(), username = "" },
-    ets:insert(?SESSIONS, State),
-    {ok, Req2, State, hibernate}.
+    {ok, Req2, #chat_state{ index = 0, start=now(), ip=IP}, hibernate}.
 
 % Called when a text message arrives.
-websocket_handle({text, Msg}, Req, State) ->
+websocket_handle({text, Msg}, Req, State =  #chat_state{index=Index}) ->
     ?CONSOLE_LOG("~p Received: ~p ~n ~p~n~n",
 		 [{?MODULE, ?LINE}, Req, State]),
-    Message = json_decode(Msg),
+    {UserId, Req1} = auth_user(Req),
     ?CONSOLE_LOG(" Req: ~p ~n", [Message]),
-    {Res, NewState} = process_req(State, Message),
-    Req2 = cowboy_req:compact(Req),
+    Res = process(UserId, State),
+    NewState = State#chat_state{index=Index+1},
+    Req2 = cowboy_req:compact(Req1),
     ?CONSOLE_LOG("~p send back: ~p ~n",
 		 [{?MODULE, ?LINE}, {NewState, Res}]),
+		 
     {reply, {text, Res}, Req2, NewState, hibernate};
 % With this callback we can handle other kind of
 % messages, like binary.
@@ -60,7 +60,6 @@ websocket_info(_Info, Req, State) ->
 websocket_terminate(Reason, Req, State) ->
     ?CONSOLE_LOG("terminate: ~p ,~n ~p, ~n ~p~n~n",
 		 [Reason, Req, State]),
-    ets:delete(?SESSIONS, State#chat_state.start),		 
     ok.
     
 %     Doc4 =   [ {[{<<"bing">>,1},{<<"test">>,2}]}, 2.3, true] .
@@ -69,136 +68,63 @@ websocket_terminate(Reason, Req, State) ->
 % <<"[{\"bing\":1,\"test\":2},2.3,true]">>
 % 
 % 
-process_req(State  = #chat_state{ index = 0},
-                {[ {<<"ping">>, _}]} )->
-            From  = chat_api:last(?MESSAGES),
-            List = chat_api:get_last_count(?MESSAGES, From, 100, fun process_chat_msg/4),    
-            Json = json_encode([{<<"status">>,true},
-                                {<<"new_messages">>, List } ]  ),
-            { Json, State#chat_state{ index = From } }
-; 
-process_req(State  = #chat_state{ index = Index},
-                {[ {<<"ping">>, _}]} )->
-            From  = chat_api:last(?MESSAGES),
-            ?CONSOLE_LOG("ping from  ~p  to ~p ",
-                 [From, Index]),
-            List = chat_api:get_from_reverse(?MESSAGES, From, Index, fun process_chat_msg/4),    
-            Json = json_encode([{<<"status">>,true},
-                                {<<"new_messages">>, List } ]  ),
-            { Json, State#chat_state{ index = From } }
-;         
-process_req(State  = #chat_state{username = "", index = Index },
-                {[ {<<"new_message">>, OldMsg},{<<"session">>, null} ]} )->
-                { <<"{status:false}">>, State };
-process_req(State  = #chat_state{username = "", index = Index },
-                {[ {<<"new_message">>, OldMsg},{<<"session">>, Session} ]} )->
-                Key = <<"cryptonchat_", Session/binary >>,
-                ?CONSOLE_LOG("info: ~p ~n ~p key  ~p ~n~n", [Session, State, Key]),
 
-                case mcd:get(myMcd, Key) of
-                               {error, notfound} ->
-                                         {<<"{\"status\":false,\"desc\":\"auth_required\"}">>, State};
-                               %HACK
-                               {ok, <<128,2,88,0,0,0,0,46>>}->
-                                        {<<"{\"status\":false,\"desc\":\"auth_required\"}">>, State};
-                               {ok, Username} ->
-%                                       <<"bogdan\np1\n.">>
-%                                        <<V2:8,B2/binary>> = Username,<<128,2,88,0,0,0,0,46>>
-                                       ?CONSOLE_LOG("got from session: ~p ~n~n", [Username]),
-                                       [_, RealUserName | _T]= binary:split(Username,[<<0,0,0>>,<<1>>,<<113>>],[global]),
-                                       NewState =  State#chat_state{username = RealUserName,
-                                                          last_post = now()
-                                                          },
-                                        Msg = filter_message(OldMsg),
-                                        case filters(State#chat_state{last_msg = Msg, 
-                                                                      last_post = {0,0,0},
-                                                                      username = RealUserName }) of
-                                             true ->
-                                                From  = chat_api:put_new_message(?MESSAGES, {RealUserName, Msg}),
-                                                List  =  chat_api:get_from_reverse(?MESSAGES, From, Index,
-                                                                                   fun process_chat_msg/4),
-                                                Json  = json_encode([{<<"status">>,true},
-                                                                     {<<"new_messages">>, List } ]  ),
-                                                { Json,  NewState#chat_state{index = From} };
-                                             false->
-                                                { <<"{status:false}">>,  NewState }
-                                                
-                                       end 
-                 end              
+process(undefined)->
+      ResTime = [{<<"deal_comission">>, <<"0.1">>},
+		 {<<"use_f2a">>, false},
+		 {<<"logged">>, false},
+		 {<<"x-cache">>, true},
+		 {<<"status">>, true}
+		 ],
+		 
+      ResTime1  = erws_api:get_usd_rate(ResTime),
+      ResTime2 = erws_api:get_time(ResTime1),
+      ResTime3 = erws_api:get_state(ResTime2),
+      erws_api:json_encode({ResTime3});
+process({session, undefined, _SessionKey})->
+   process(undefined);
+process({session, SessionObj, SessionKey})->
 
-;    
-process_req(State  = #chat_state{last_post = Time, index = Index, 
-                     username = Username},
-                {[ {<<"new_message">>, OldMsg},{<<"session">>, _Session} ]} )->
-       Msg = filter_message(OldMsg),
-       case filters(State#chat_state{last_msg = Msg }) of
-           true ->
+     ?CONSOLE_LOG("session obj ~p ~n",[SessionObj]),
+      case erws_api:get_key_dict(SessionObj, <<"user_id">>, false) of
+          false -> process( undefined);
+          UserId->
+              UserIdBinary = list_to_binary(integer_to_list(UserId)),
+       
+              ?CONSOLE_LOG("user id ~p~n", [UserIdBinary]), 
+              SessionKeyCustom = list_to_binary(erws_api:hexstring(crypto:hash(sha256, <<?KEY_PREFIX, SessionKey/binary, UserIdBinary/binary>>))), 
+              ResTime = [
+		    {<<"logged">>, true},
+		    {<<"x-cache">>, true},
+		    {<<"status">>, true},
+	            {<<"sessionid">>, SessionKeyCustom},
 
-                From  = chat_api:put_new_message(?MESSAGES, {Username, Msg}),
-                List = chat_api:get_from_reverse(?MESSAGES, From, Index, fun process_chat_msg/4),
-                Json = json_encode([{<<"status">>,true},
-                                    {<<"new_messages">>, List } ] ),                     
-                { Json, 
-                                         State#chat_state{
-                                                          index = From,
-                                                          last_post = now()
-                                                          } 
-                };
-           false ->
-                { <<"{status:false}">>,  State }
-      end   
+		    {<<"user_custom_id">>, erws_api:get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
+		    {<<"use_f2a">>, erws_api:get_key_dict(SessionObj, <<"use_f2a">>, false) },
+		    {<<"deal_comission">>, erws_api:get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
+		    ],		
+              {pickle_unicode, UserName } = erws_api:get_key_dict(SessionObj, <<"username">>, {pickle_unicode, <<>>} ),
+      % move spawn
+               mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "chat_", SessionKeyCustom/binary>>, pickle:term_to_pickle(UserName)),
+               mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "user_", UserIdBinary/binary>>, pickle:term_to_pickle(SessionKey)),   
+               ResTime1  = erws_api:get_usd_rate(ResTime),
+               ResTime3 = erws_api:get_time(ResTime1),
+               ResTime4 = erws_api:get_user_state(ResTime3, UserIdBinary),
+               erws_api:json_encode({ResTime4})
+      end.
+
+      
+auth_user(Req)->
+       {CookieSession, Req1} = cowboy_req:cookie(<<"sessionid">>, Req, undefined), 
+       ?CONSOLE_LOG(" request from ~p ~n",[ CookieSession]),
+       case CookieSession of 
+          undefined -> {undefined, Req1 };
+          Session->
+              SessionObj =  erws_api:load_user_session(erws_api:django_session_key(CookieSession)),
+              ?CONSOLE_LOG(" load session  ~n",[]),
+	      { {session, SessionObj, CookieSession}, Req1}
+      end     
 .
-
-json_decode(Json)->
-       { jsx:decode(Json) }.
-
-json_encode(Doc)->
-        jsx:encode(Doc).
-
-%     Doc4 =   [ {[{<<"bing">>,1},{<<"test">>,2}]}, 2.3, true] .
-% [{[{<<"bing">>,1},{<<"test">>,2}]},2.3,true]
-% (shellchat@localhost.localdomain)16> jiffy:encode( Doc4).                                      
-% <<"[{\"bing\":1,\"test\":2},2.3,true]">>
-% 
-process_chat_msg(Id, Time, Username, Msg)-> 
-     {Mega, Sec, _} = Time,
-     TimeSecs = (Mega * 1000000) + Sec,
-     [{<<"time">>, TimeSecs}, {<<"username">>,Username}, {<<"message">>,Msg}]
-.
-
-filters(State)->
-        Username = State#chat_state.username,
-        Time = State#chat_state.last_post,
-        Now = now(),
-        case mcd:get(myMcd, <<"cryptonbanned_", Username/binary >>) of
-                {ok, _ }-> 
-                        ?CONSOLE_LOG("filter: user is banned ~n ~p~n~n", [Username]),
-                        false;
-                {error, notfound} -> 
-                        Res = timer:now_diff(Now, Time)> 15000000,
-                        ?CONSOLE_LOG("filter: is it too often ~p ~n ", [Res]),
-                        Res
-        end
-.
-
-filter_message(Msg)->
-         binary:replace(Msg,
-                [<<"[">>,
-                <<"]">>, 
-                <<"'">>,
-                <<"|">>,
-                <<">">>,
-                <<"<">>,
-                <<"/">>,<<"\"">>,
-                <<"\\">>,
-                <<"@">>,
-                <<"#">>,
-                <<"$">>,
-                <<"%">>,
-                <<"^">>,
-                <<"&">>,
-                <<"*">>],
-                <<"">>,
-                [global])
-.
-
+      
+      
+      
