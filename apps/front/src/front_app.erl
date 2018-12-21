@@ -37,7 +37,6 @@ start()->
     ok = application:start(compiler),
     ok = application:start(dht_ring),
     ok = application:start(syntax_tools),
-    ok = application:start(emysql),
     ok = application:start(goldrush),    
     ok = application:start(lager),
     application:start(front).
