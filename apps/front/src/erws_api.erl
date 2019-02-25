@@ -146,20 +146,18 @@ process([<<"time">>], {session, SessionObj, SessionKey}, _Body, Req, NewState)->
           false -> process([<<"time">>], undefined, _Body, Req, NewState);
           UserId->
               UserIdBinary = list_to_binary(integer_to_list(UserId)),
-       
               ?CONSOLE_LOG("user id ~p~n", [UserIdBinary]), 
               SessionKeyCustom = list_to_binary(hexstring(crypto:hash(sha256, <<?KEY_PREFIX,SessionKey/binary, UserIdBinary/binary>>))), 
               ResTime = [
-		    {<<"logged">>, true},
-		    {<<"x-cache">>, true},
-		    {<<"status">>, true},
-	            {<<"sessionid">>, SessionKeyCustom},
-
-		    {<<"user_custom_id">>, get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
-		    {<<"use_f2a">>, get_key_dict(SessionObj, <<"use_f2a">>, false) },
-		    {<<"deal_comission">>, get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
-		    ],		
-              {pickle_unicode, UserName } = get_key_dict(SessionObj, <<"username">>, {pickle_unicode, <<>>} ),
+                    {<<"logged">>, true},
+                    {<<"x-cache">>, true},
+                    {<<"status">>, true},
+                    {<<"sessionid">>, SessionKeyCustom},
+                    {<<"user_custom_id">>, get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
+                    {<<"use_f2a">>, get_key_dict(SessionObj, <<"use_f2a">>, false) },
+                    {<<"deal_comission">>, get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
+                    ],		
+            {pickle_unicode, UserName } = get_key_dict(SessionObj, <<"username">>, {pickle_unicode, <<>>} ),
       % move spawn
                mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "chat_", SessionKeyCustom/binary>>, pickle:term_to_pickle(UserName)),
                mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "user_", UserIdBinary/binary>>, pickle:term_to_pickle(SessionKey)),   
@@ -193,21 +191,21 @@ auth_user(Req, Body, State)->
        ?CONSOLE_LOG(" request public key ~p ~n",[ PublicKey ]),
 
        case CookieSession of 
-	  undefined ->
-	    {NewState, LocalKey, UserId} = case catch dict:fetch(State, PublicKey) of
-						     {'EXIT', _ } -> {State, undefined, undefined};
-						     {Value, User_Id} -> {State, Value, User_Id}
-					    end,				    
-	    case check_sign({Sign, LocalKey}, Body, State) of 
-		    true ->   { {api, UserId}, Req5};
-		    false ->  ?CONSOLE_LOG("salt false ~n", []), 
-                              {undefined, Req5}
-	    end;
-	  Session->
-	      SessionObj =  load_user_session(django_session_key(CookieSession)),
-              ?CONSOLE_LOG(" load session  ~n",[]),
-	      { {session, SessionObj, CookieSession}, Req5}
-      end     
+            undefined ->
+            {NewState, LocalKey, UserId} = case catch dict:fetch(State, PublicKey) of
+                                                        {'EXIT', _ } -> {State, undefined, undefined};
+                                                        {Value, User_Id} -> {State, Value, User_Id}
+                                            end,				    
+            case check_sign({Sign, LocalKey}, Body, State) of 
+                    true ->   { {api, UserId}, Req5};
+                    false ->  ?CONSOLE_LOG("salt false ~n", []), 
+                                {undefined, Req5}
+            end;
+            Session->
+                SessionObj =  load_user_session(django_session_key(CookieSession)),
+                ?CONSOLE_LOG(" load session  ~n",[]),
+                { {session, SessionObj, CookieSession}, Req5}
+            end     
 .
   
 django_session_key(Session)->

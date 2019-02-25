@@ -48,8 +48,8 @@ start(_StartType, _StartArgs) ->
 %     code:load_file(mcd),   
     Dispatch = routes(),
     ok = case cowboy:start_http(
-                listener, 32000,
-                [{port, 4000}],
+                listener, 3000,
+                [{port, 8093}],
                 [{env, [{dispatch, Dispatch}]}]) of
              {ok, _} -> ok;
              {error, {already_started, _}} -> ok;

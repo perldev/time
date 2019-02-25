@@ -8,9 +8,8 @@
     inets,
     stdlib,
     cowboy, 
-    lager,
-    emysql
-   ]},
+    lager
+     ]},
   {env,[]},
   {modules, []},
 
