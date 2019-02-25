@@ -33,7 +33,8 @@
         chat_state,{
                start,
                index = 0,
-               ip
+               ip,
+               user_id
         }
 
 ).

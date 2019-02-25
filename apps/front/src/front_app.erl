@@ -16,7 +16,7 @@
 routes() ->
     cowboy_router:compile([{'_',
 			    [
-			     {"/wstime", erws_handler, []},
+			     {"/ws/[...]", erws_handler, []},
 			     {"/[...]", erws_api, dict:new()},
 			     {"/static/[...]", cowboy_static,
 			      [{directory, <<"static">>},
@@ -47,7 +47,7 @@ start(_StartType, _StartArgs) ->
 %     code:load_file(mcd),   
     Dispatch = routes(),
     ok = case cowboy:start_http(
-                listener, 32000,
+                listener, 200,
                 [{port, 4000}],
                 [{env, [{dispatch, Dispatch}]}]) of
              {ok, _} -> ok;

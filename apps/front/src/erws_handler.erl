@@ -28,20 +28,21 @@ terminate(_Req, _State) -> ok.
 websocket_init(_Any, Req, []) ->
     ?CONSOLE_LOG("~nNew client ~p", [Req]),
     { { IP, _Port }, Req_2 } = cowboy_req:peer(Req),
+    {CookieSession, Req_3} = cowboy_req:cookie(<<"sessionid">>, Req_2, undefined), 
+    UserId = auth_user( CookieSession ),
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
-    Req2 = cowboy_req:compact(Req_2),
-    {ok, Req2, #chat_state{ index = 0, start=now(), ip=IP}, hibernate}.
+    ReqRes = cowboy_req:compact(Req_3),
+    {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, start=now(), ip=IP}, hibernate}.
 
 % Called when a text message arrives.
 websocket_handle({text, Msg}, Req, State =  #chat_state{index=Index}) ->
     ?CONSOLE_LOG("~p Received: ~p ~n ~p~n~n",
 		 [{?MODULE, ?LINE}, Req, State]),
-    {UserId, Req1} = auth_user(Req),
-    ?CONSOLE_LOG(" Req: ~p ~n", [Message]),
-    Res = process(UserId),
+    ?CONSOLE_LOG(" Req: ~p ~n", [Msg]),
+    Res = process(State#chat_state.user_id),
     NewState = State#chat_state{index=Index+1},
-    Req2 = cowboy_req:compact(Req1),
+    Req2 = cowboy_req:compact(Req),
     ?CONSOLE_LOG("~p send back: ~p ~n",
 		 [{?MODULE, ?LINE}, {NewState, Res}]),
 		 
@@ -109,20 +110,20 @@ process({session, SessionObj, SessionKey})->
                mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "user_", UserIdBinary/binary>>, pickle:term_to_pickle(SessionKey)),   
                ResTime1  = erws_api:get_usd_rate(ResTime),
                ResTime3 = erws_api:get_time(ResTime1),
-               ResTime4 = erws_api:get_user_state(ResTime3, UserIdBinary),
+               %ResTime4 = erws_api:get_user_state(ResTime3, UserIdBinary),
+               ResTime4 = erws_api:get_state(ResTime3),
                erws_api:json_encode({ResTime4})
       end.
 
       
-auth_user(Req)->
-       {CookieSession, Req1} = cowboy_req:cookie(<<"sessionid">>, Req, undefined), 
-       ?CONSOLE_LOG(" request from ~p ~n",[ CookieSession]),
+auth_user(CookieSession)->
+       ?CONSOLE_LOG(" auth for session  ~p ~n",[ CookieSession]),
        case CookieSession of 
-          undefined -> {undefined, Req1 };
+          undefined -> undefined;
           Session->
               SessionObj =  erws_api:load_user_session(erws_api:django_session_key(CookieSession)),
               ?CONSOLE_LOG(" load session  ~n",[]),
-	      { {session, SessionObj, CookieSession}, Req1}
+	      {session, SessionObj, CookieSession}
       end     
 .
       

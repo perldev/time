@@ -186,11 +186,13 @@ load_user_session(SessionKey)->
 
 auth_user(Req, Body, State)->
        {Sign, Req3 }  = cowboy_req:header(<<"api_sign">>, Req, undefined),
-       {PublicKey, Req4 }  = cowboy_req:header(<<"public_key">>, Req3, undefined),
+       {PublicKey, Req4_ }  = cowboy_req:header(<<"public_key">>, Req3, undefined),
+       {Headers, Req4 }  = cowboy_req:headers(Req4_),
        {CookieSession, Req5} = cowboy_req:cookie(<<"sessionid">>, Req4, undefined), 
 
        ?CONSOLE_LOG(" request from ~p ~n",[ CookieSession]),
        ?CONSOLE_LOG(" request public key ~p ~n",[ PublicKey ]),
+       ?CONSOLE_LOG(" headers ~p ~n",[ Headers ]),
 
        case CookieSession of 
 	  undefined ->

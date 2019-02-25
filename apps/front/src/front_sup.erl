@@ -35,7 +35,7 @@ init([]) ->
         
         },
     Mcd = {local_memcache,
-                {mcd, start_link, ['myMcd', ["10.4.0.6", 11211]]},
+                {mcd, start_link, ['myMcd', ["127.0.0.1", 11211]]},
                permanent, 10000, worker, [mcd] },
                 
     {ok, { {one_for_one, 10000, 10}, [ApiTableHolder, Mcd]} }.
