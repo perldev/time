@@ -30,7 +30,6 @@ routes() ->
 start()->
     inets:start(),
     ok = application:start(ranch),
-     
     ok = application:start(crypto),
     ok = application:start(cowlib),
     ok = application:start(cowboy),
@@ -44,11 +43,12 @@ start()->
 start(_StartType, _StartArgs) ->
 %     io:format("~p",[code:all_loaded()]),    
 %     io:format("~p",[code:which(mcd)]), 
-%     code:load_file(mcd),   
+%     code:load_file(mcd),
+    
     Dispatch = routes(),
     ok = case cowboy:start_http(
                 listener, 3000,
-                [{port, 8093}],
+                [{port, 4000}],
             [{env, [{dispatch, Dispatch}]}]) of
              {ok, _} -> ok;
              {error, {already_started, _}} -> ok;

@@ -23,10 +23,12 @@ start_link() ->
 
 init([]) ->
         Tid = ets:new(tasks, [set, protected,  {heir,none}, {write_concurrency,false}, {read_concurrency,true}]),
+        {ok, Routes} = application:get_env(front, routes),
         {ok, #monitor{
                          tasks = dict:new() ,
                          pids = dict:new(), 
-                         tid = Tid}
+                         tid = Tid,
+                         routes = Routes}
         }.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -41,7 +43,7 @@ handle_call({check, Key }, _From, State) ->
     end;
 handle_call(status,_From ,State) ->
     ?LOG_DEBUG("get msg call ~p ~n", [status]),
-    {reply, {dict:to_list(State#monitor.tasks),  dict:to_list(State#monitor.pids)}, State};
+    {reply, State, State};
 handle_call(Info,_From ,State) ->
     ?LOG_DEBUG("get msg call ~p ~n", [Info]),
     {reply, undefined , State}.
