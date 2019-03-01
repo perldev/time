@@ -232,7 +232,7 @@ handle_cast({start_task, Key, Params }, MyState) ->
     case dict:find(Key, MyState#monitor.tasks) of
           {ok, Value} ->  {noreply, MyState};
           error ->
-                {Pid, Mont} = start_asyn_task(Key, Params, MyState#monitor.routes),
+                {Pid, Mont} = start_asyn_task(Key, Params, MyState),
                 DictNew1 = dict:store(Pid, Key, MyState#monitor.pids),
                 DictNew2 = dict:store(Key, Pid, MyState#monitor.tasks),
                 % duplicate info to ets table
