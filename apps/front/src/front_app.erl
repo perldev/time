@@ -16,7 +16,7 @@
 routes() ->
     cowboy_router:compile([{'_',
 			    [
-			     {"/wstime", erws_handler, []},
+			     {"/ws/[...]", erws_handler, []},
 			     {"/[...]", erws_api, dict:new()},
 			     {"/static/[...]", cowboy_static,
 			      [{directory, <<"static">>},
@@ -37,7 +37,6 @@ start()->
     ok = application:start(compiler),
     ok = application:start(dht_ring),
     ok = application:start(syntax_tools),
-    ok = application:start(emysql),
     ok = application:start(goldrush),    
     ok = application:start(lager),
     application:start(front).
@@ -50,7 +49,7 @@ start(_StartType, _StartArgs) ->
     ok = case cowboy:start_http(
                 listener, 3000,
                 [{port, 8093}],
-                [{env, [{dispatch, Dispatch}]}]) of
+            [{env, [{dispatch, Dispatch}]}]) of
              {ok, _} -> ok;
              {error, {already_started, _}} -> ok;
              {error, _} = Error -> Error

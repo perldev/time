@@ -90,7 +90,8 @@ process_delayed_task(Key, Req, State)->
                   false-> 
 
                            ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                           api_table_holder:start_task(Key), wait_response(Req, State); 
+                           api_table_holder:start_task(Key), 
+                           wait_response(Req, State); 
                   Val -> 
             
                        ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
@@ -125,18 +126,18 @@ process([<<"time">>], undefined, _Body, Req, State)->
       ResTime3 = get_state(ResTime2),
       {json, {ResTime3}, Req, State};
 process([<<"time">>], {api, UserId}, Body, Req, State)->
-      ResTime = [
-		  {<<"logged">>, true},
-		  {<<"x-cache">>, true},
-		  {<<"status">>, true},
-		  {<<"deal_comission">>,  <<"0.05">> }
-		  ],		
-	% move spawn
-	ResTime1  = get_usd_rate(ResTime),
-	ResTime3 = get_time(ResTime1),
-	%ResTime4 = get_user_state(ResTime3, UserId),
-	ResTime4 = get_state(ResTime3),
-	{json, {ResTime3}, Req, State};
+         ResTime = [
+                    {<<"logged">>, true},
+                    {<<"x-cache">>, true},
+                    {<<"status">>, true},
+                    {<<"deal_comission">>,  <<"0.05">> }
+                    ],		
+        % move spawn
+        ResTime1  = get_usd_rate(ResTime),
+        ResTime3 = get_time(ResTime1),
+        %ResTime4 = get_user_state(ResTime3, UserId),
+        ResTime4 = get_state(ResTime3),
+        {json, {ResTime3}, Req, State};
 process([<<"time">>], {session, undefined, _SessionKey}, _Body, Req, State)->
    process([<<"time">>], undefined, _Body, Req, State);
 process([<<"time">>], {session, SessionObj, SessionKey}, _Body, Req, NewState)->
@@ -184,11 +185,13 @@ load_user_session(SessionKey)->
 
 auth_user(Req, Body, State)->
        {Sign, Req3 }  = cowboy_req:header(<<"api_sign">>, Req, undefined),
-       {PublicKey, Req4 }  = cowboy_req:header(<<"public_key">>, Req3, undefined),
+       {PublicKey, Req4_ }  = cowboy_req:header(<<"public_key">>, Req3, undefined),
+       {Headers, Req4 }  = cowboy_req:headers(Req4_),
        {CookieSession, Req5} = cowboy_req:cookie(<<"sessionid">>, Req4, undefined), 
 
        ?CONSOLE_LOG(" request from ~p ~n",[ CookieSession]),
        ?CONSOLE_LOG(" request public key ~p ~n",[ PublicKey ]),
+       ?CONSOLE_LOG(" headers ~p ~n",[ Headers ]),
 
        case CookieSession of 
             undefined ->
@@ -277,19 +280,19 @@ fetch_django_session( UserId)->
 
 fetch_django_session(UserId, Key)->
     case mcd:get(?LOCAL_CACHE, << ?KEY_PREFIX, "user_", UserId/binary>>) of
-	{ok, Val}->
-	    {pickle_unicode, Rate} = pickle:pickle_to_term(Val),
-	    Rate;
-	_ ->
-	    undefined
-      end
+        {ok, Val}->
+            {pickle_unicode, Rate} = pickle:pickle_to_term(Val),
+            Rate;
+        _ ->
+            undefined
+    end
 .
 
 get_key_dict(SessionObj,Key, Default)->
-   case dict:find(Key, SessionObj) of
-	{ok, Value} -> Value;
-	error -> Default
-   end
+    case dict:find(Key, SessionObj) of
+        {ok, Value} -> Value;
+        error -> Default
+    end
 .
 
 

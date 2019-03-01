@@ -28,23 +28,32 @@ terminate(_Req, _State) -> ok.
 websocket_init(_Any, Req, []) ->
     ?CONSOLE_LOG("~nNew client ~p", [Req]),
     { { IP, _Port }, Req_2 } = cowboy_req:peer(Req),
-    %TODO make key from server
-    ?CONSOLE_LOG("~n new session  ~n", []),
-    Req2 = cowboy_req:compact(Req_2),
-    {ok, Req2, #chat_state{ index = 0, start=now(), ip=IP}, hibernate}.
+    {CookieSession, Req_3} = cowboy_req:cookie(<<"sessionid">>, Req_2, undefined), 
+    ReqRes = cowboy_req:compact(Req_3),
+    case auth_user( CookieSession ) of
+        undefined ->
+          %TODO make key from server
+          ?CONSOLE_LOG("~n new session  ~n", []),
+          {ok, ReqRes, #chat_state{ index = 0,  start=now(), ip=IP, tasks=[], sessionkey=CookieSession}, hibernate};
+        {UserId, SessionObj}->
+          {ok, ReqRes, #chat_state{ index = 0, sessionobj=SessionObj, 
+                                    user_id=UserId, start=now(), ip=IP, tasks=[], sessionkey=CookieSession}, hibernate}
+    end.
+       
+       
 
 % Called when a text message arrives.
 websocket_handle({text, Msg}, Req, State =  #chat_state{index=Index}) ->
     ?CONSOLE_LOG("~p Received: ~p ~n ~p~n~n",
-		 [{?MODULE, ?LINE}, Req, State]),
-    {UserId, Req1} = auth_user(Req),
-    ?CONSOLE_LOG(" Req: ~p ~n", [Message]),
-    Res = process(UserId),
-    NewState = State#chat_state{index=Index+1},
-    Req2 = cowboy_req:compact(Req1),
+                [{?MODULE, ?LINE}, Req, State]),
+    ?CONSOLE_LOG(" Req: ~p ~n", [Msg]),
+    JsonMsg = erws_api:json_decode(Msg), % decode received json object
+    {Res, ProcessNewState } = process(JsonMsg, State#chat_state.user_id, State),
+    NewState = ProcessNewState#chat_state{index=Index+1},
+    Req2 = cowboy_req:compact(Req),
     ?CONSOLE_LOG("~p send back: ~p ~n",
-		 [{?MODULE, ?LINE}, {NewState, Res}]),
-		 
+                [{?MODULE, ?LINE}, {NewState, Res}]),
+
     {reply, {text, Res}, Req2, NewState, hibernate};
 % With this callback we can handle other kind of
 % messages, like binary.
@@ -61,7 +70,10 @@ websocket_terminate(Reason, Req, State) ->
     ?CONSOLE_LOG("terminate: ~p ,~n ~p, ~n ~p~n~n",
 		 [Reason, Req, State]),
     ok.
-    
+
+% jiffy     {[
+%                     {<<"logged">>, true} }
+
 %     Doc4 =   [ {[{<<"bing">>,1},{<<"test">>,2}]}, 2.3, true] .
 % [{[{<<"bing">>,1},{<<"test">>,2}]},2.3,true]
 % (shellchat@localhost.localdomain)16> jiffy:encode( Doc4).                                      
@@ -69,60 +81,137 @@ websocket_terminate(Reason, Req, State) ->
 % 
 % 
 
-process(undefined)->
-      ResTime = [{<<"deal_comission">>, <<"0.1">>},
-		 {<<"use_f2a">>, false},
-		 {<<"logged">>, false},
-		 {<<"x-cache">>, true},
-		 {<<"status">>, true}
-		 ],
-		 
+wait_response()->
+   erws_api:json_encode({[{<<"status">>, <<"wait">>}]}).
+
+   
+wait_tasks_in_work(State)->
+    lists:foldl(fun(Key, {List, TempState})-> 
+                    case api_table_holder:find_in_cache(Key) of 
+                        false -> {List, TempState};
+                        Val -> 
+                            Tasks = State#chat_state.tasks,    
+                            {[{Key, Val}|List], TempState#chat_state{tasks=lists:delete(Key, Tasks) } } %%binary
+                    end
+                end, {[], State}, State#chat_state.tasks)
+.
+   
+revertkey(Command)->
+   lists:foldl(fun(Key, Url) -> << "/", Key/binary >>   end, <<>>, Command)
+.
+   
+process_delayed_task(Command,  UserId, State)->
+    StringTokens =  string:tokens(Command),
+    Key = case api_table_holder:public(StringTokens) of 
+                  true ->  StringTokens;
+                  false -> string:tokens(StringTokens) ++ integer_to_list(UserId)
+            end,
+    case api_table_holder:check_task_in_work(Key,  State)  of 
+        false -> 
+                case api_table_holder:find_in_cache(Key) of
+                    false-> 
+                         ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
+                        api_table_holder:start_task(Key, [ {user_id, list_to_binary(integer_to_list(UserId)) }] ),
+                        Tasks = State#chat_state.tasks,    
+                        { wait_response(), State#chat_state{tasks=[Key|Tasks] } }; 
+                    Val -> 
+                        ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+                        Tasks = State#chat_state.tasks,    
+                        {Val, State#chat_state{tasks=lists:delete(Key, Tasks) }} 
+                end;
+        Result ->
+            %% add here timeout of repeat execution, or failed tasks
+            ?CONSOLE_LOG(" we have found  task in work ~p ~n",[ Key ]),
+            Tasks = State#chat_state.tasks,    
+            { wait_response(), State#chat_state{tasks=[Key|Tasks] } } 
+    end.
+
+looking4finshed(ResTime, UserId, State)-> 
+      BinUserId = list_to_binary(integer_to_list(UserId)),
+      case wait_tasks_in_work(State) of 
+        {[], NewState}  ->  {erws_api:json_encode({ResTime}), NewState };
+        { Result, NewState } -> 
+                                %% NOT very good way of producings delayed tasks
+                                TempBinary =  erws_api:json_encode({ResTime}),
+                                TempBinary2 = binary:replace(TempBinary, <<"}">>,<<>>),
+                                ?CONSOLE_LOG("corrupt json in order to add  info from tasks  ~p ~n",[TempBinary2]),
+                                ResBinary = lists:foldl(fun({ Command, BinaryValue}, Binary)->  
+                                                                                              BinCommanKey = lists:delete(BinUserId, Command),
+                                                                                              Key = revertkey(BinCommanKey),
+                                                                                              <<Binary/binary, ",\"",
+                                                                                              Key/binary, "\":", %%join path for client 
+                                                                                              BinaryValue/binary>> end, TempBinary2, Result),
+                                
+                            { <<ResBinary/binary, "}">>, NewState}
+      end.
+ 
+process({[{<<"get">>, Var}]}, UserId, State)->
+% TODO 
+% field task object as saved = started or not
+% if task exist with result return it and pop from tasks
+% if tasks not exist start it gather user information
+%   starting tasks
+
+    {Result, NewState} =  process_delayed_task(Var, UserId, State),
+    {Result, NewState}
+;
+process({[{<<"ping">>, true}] }, undefined, State)->
+    ResTime = [{<<"deal_comission">>, <<"0.1">>},
+               {<<"use_f2a">>, false},
+               {<<"logged">>, false},
+               {<<"x-cache">>, true},
+               {<<"status">>, true}
+              ],
+
       ResTime1  = erws_api:get_usd_rate(ResTime),
       ResTime2 = erws_api:get_time(ResTime1),
       ResTime3 = erws_api:get_state(ResTime2),
-      erws_api:json_encode({ResTime3});
-process({session, undefined, _SessionKey})->
-   process(undefined);
-process({session, SessionObj, SessionKey})->
-
-     ?CONSOLE_LOG("session obj ~p ~n",[SessionObj]),
-      case erws_api:get_key_dict(SessionObj, <<"user_id">>, false) of
-          false -> process( undefined);
-          UserId->
-              UserIdBinary = list_to_binary(integer_to_list(UserId)),
-       
-              ?CONSOLE_LOG("user id ~p~n", [UserIdBinary]), 
-              SessionKeyCustom = list_to_binary(erws_api:hexstring(crypto:hash(sha256, <<?KEY_PREFIX, SessionKey/binary, UserIdBinary/binary>>))), 
-              ResTime = [
-		    {<<"logged">>, true},
-		    {<<"x-cache">>, true},
-		    {<<"status">>, true},
-	            {<<"sessionid">>, SessionKeyCustom},
-
-		    {<<"user_custom_id">>, erws_api:get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
-		    {<<"use_f2a">>, erws_api:get_key_dict(SessionObj, <<"use_f2a">>, false) },
-		    {<<"deal_comission">>, erws_api:get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
-		    ],		
-              {pickle_unicode, UserName } = erws_api:get_key_dict(SessionObj, <<"username">>, {pickle_unicode, <<>>} ),
-      % move spawn
-               mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "chat_", SessionKeyCustom/binary>>, pickle:term_to_pickle(UserName)),
-               mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "user_", UserIdBinary/binary>>, pickle:term_to_pickle(SessionKey)),   
-               ResTime1  = erws_api:get_usd_rate(ResTime),
-               ResTime3 = erws_api:get_time(ResTime1),
-               ResTime4 = erws_api:get_user_state(ResTime3, UserIdBinary),
-               erws_api:json_encode({ResTime4})
-      end.
-
-      
-auth_user(Req)->
-       {CookieSession, Req1} = cowboy_req:cookie(<<"sessionid">>, Req, undefined), 
-       ?CONSOLE_LOG(" request from ~p ~n",[ CookieSession]),
+      looking4finshed(ResTime3, undefined, State)
+;
+%TODO
+% check ready tasks if existed return it all
+process( ReqJson = {[{<<"ping">>, true}]}, UserId, State)->
+    ?CONSOLE_LOG("session obj ~p ~n",[SessionObj]),
+    UserIdBinary = list_to_binary(integer_to_list(UserId)),
+    SessionKey =  State#chat_state.sessionkey,
+    SessionObj =  State#chat_state.sessionobj,
+    ?CONSOLE_LOG("user id ~p~n", [UserIdBinary]), 
+    SessionKeyCustom = list_to_binary(erws_api:hexstring(crypto:hash(sha256, <<?KEY_PREFIX, SessionKey/binary, UserIdBinary/binary>>))), 
+    ResTime = [
+        {<<"logged">>, true},
+        {<<"x-cache">>, true},
+        {<<"status">>, true},
+        {<<"sessionid">>, SessionKeyCustom},
+        {<<"user_custom_id">>, erws_api:get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
+        {<<"use_f2a">>, erws_api:get_key_dict(SessionObj, <<"use_f2a">>, false) },
+        {<<"deal_comission">>, erws_api:get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
+        ],		
+    {pickle_unicode, UserName } = erws_api:get_key_dict(SessionObj, <<"username">>, {pickle_unicode, <<>>} ),
+    % move spawn
+    mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "chat_", SessionKeyCustom/binary>>, pickle:term_to_pickle(UserName)),
+    mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "user_", UserIdBinary/binary>>, pickle:term_to_pickle(SessionKey)),   
+    ResTime1  = erws_api:get_usd_rate(ResTime),
+    ResTime3 = erws_api:get_time(ResTime1),
+    %ResTime4 = erws_api:get_user_state(ResTime3, UserIdBinary),
+    ResTime4 = erws_api:get_state(ResTime3),
+    looking4finshed(ResTime4, UserId, State).
+    
+auth_user(CookieSession)->
+       ?CONSOLE_LOG(" auth for session  ~p ~n",[ CookieSession]),
        case CookieSession of 
-          undefined -> {undefined, Req1 };
-          Session->
+          undefined -> undefined;
+          _ ->
               SessionObj =  erws_api:load_user_session(erws_api:django_session_key(CookieSession)),
-              ?CONSOLE_LOG(" load session  ~n",[]),
-	      { {session, SessionObj, CookieSession}, Req1}
+              ?CONSOLE_LOG(" load session ~p ~n",[SessionObj]),
+              case SessionObj of 
+                undefined -> undefined;
+                {session, undefined, _SessionKey} -> undefined;
+                {session, SessionObj, _SessionKey}->
+                    case erws_api:get_key_dict(SessionObj, <<"user_id">>, false) of
+                            false -> undefined;
+                            UserId-> {UserId, SessionObj}
+                    end
+              end      
       end     
 .
       
