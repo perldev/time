@@ -119,9 +119,27 @@ process_delayed_task(Command,  UserId, State)->
             { wait_response(), State#chat_state{tasks=[Key|Tasks] } } 
     end.
 
+looking4finshed(ResTime, undefined, State)-> 
+      ?CONSOLE_LOG(" looking finished tasks for anonym ~n",[ ]),
+      case wait_tasks_in_work(State) of 
+        {[], NewState}  ->  {erws_api:json_encode({ResTime}), NewState };
+        { Result, NewState } -> 
+                                %% NOT very good way of producings delayed tasks
+                                TempBinary =  erws_api:json_encode({ResTime}),
+                                TempBinary2 = binary:replace(TempBinary, <<"}">>,<<>>),
+                                ?CONSOLE_LOG("corrupt json in order to add  info from tasks  ~p ~n",[TempBinary2]),
+                                ResBinary = lists:foldl(fun({ Command, BinaryValue}, Binary)->  
+                                                                                              Key = revertkey(Command),
+                                                                                              <<Binary/binary, ",\"",
+                                                                                              Key/binary, "\":", %%join path for client 
+                                                                                              BinaryValue/binary>> end, TempBinary2, Result),
+                                
+                            { <<ResBinary/binary, "}">>, NewState}
+      end;    
 looking4finshed(ResTime, UserId, State)-> 
-    ?CONSOLE_LOG(" check finished  tasks for ~p ~n",[ UserId ]),
-    case wait_tasks_in_work(State) of 
+      ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ UserId ]),
+      BinUserId = list_to_binary(integer_to_list(UserId)),
+      case wait_tasks_in_work(State) of 
         {[], NewState}  ->  {erws_api:json_encode({ResTime}), NewState };
         { Result, NewState } -> 
                                 %% NOT very good way of producings delayed tasks
