@@ -22,7 +22,8 @@ start_link() ->
           gen_server:start_link({local, ?MODULE},?MODULE, [],[]).
 
 init([]) ->
-        Tid = ets:new(tasks, [set, protected,  {heir,none}, {write_concurrency,false}, {read_concurrency,true}]),
+        Tid = ets:new(tasks, [set, protected, named_table, {heir,none},
+                              {write_concurrency,false}, {read_concurrency,true}]),
         {ok, Routes} = application:get_env(front, routes),
         {ok, #monitor{
                          tasks = dict:new() ,
@@ -269,6 +270,7 @@ handle_info({'DOWN',Ref,process, Pid, Exit},  State)->
           {ok, Key}->
              DictNew1 = dict:erase(Pid, State#monitor.pids),
              DictNew2 = dict:erase(Key, State#monitor.tasks),
+             ets:delete(tasks, Key),
              {noreply,  State#monitor{tasks=DictNew2, pids=DictNew1}};
            error ->   
              {noreply,  State}
