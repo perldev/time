@@ -193,11 +193,11 @@ process_params2headers({user_id, Value})->
   {<<"X-Forwarded-User">>, Value}
 .
       
-start_asyn_task(Key, Params, State)->
+start_asyn_task(KeyPath, Params, State)->
      Host = route_search(Key, State#monitor.routes),
      Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
-     Url = lists:foldl(fun(Key, Url) -> << "/", Key/binary >>   end, <<>> ,Key),
-     HostUrl = <<Host/binary, "/", Url/binary>>,
+     Url = lists:foldl(fun(Key, Url) -> << "/", Key/binary >>   end, <<>>, KeyPath),
+     HostUrl = <<Host/binary,  Url/binary>>,
      run_http(HostUrl, Headers)
 .
       
