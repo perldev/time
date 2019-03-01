@@ -29,18 +29,11 @@ websocket_init(_Any, Req, []) ->
     ?CONSOLE_LOG("~nNew client ~p", [Req]),
     { { IP, _Port }, Req_2 } = cowboy_req:peer(Req),
     {CookieSession, Req_3} = cowboy_req:cookie(<<"sessionid">>, Req_2, undefined), 
+    {UserId, SessionObj} = auth_user( CookieSession ),
+    %TODO make key from server
+    ?CONSOLE_LOG("~n new session  ~n", []),
     ReqRes = cowboy_req:compact(Req_3),
-    case auth_user( CookieSession ) of
-        undefined ->
-          %TODO make key from server
-          ?CONSOLE_LOG("~n new session  ~n", []),
-          {ok, ReqRes, #chat_state{ index = 0,  start=now(), ip=IP, tasks=[], sessionkey=CookieSession}, hibernate};
-        {UserId, SessionObj}->
-          {ok, ReqRes, #chat_state{ index = 0, sessionobj=SessionObj, 
-                                    user_id=UserId, start=now(), ip=IP, tasks=[], sessionkey=CookieSession}, hibernate}
-    end.
-       
-       
+    {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, start=now(), ip=IP, tasks=[], sessionobj=SessionObj, sessionkey=CookieSession}, hibernate}.
 
 % Called when a text message arrives.
 websocket_handle({text, Msg}, Req, State =  #chat_state{index=Index}) ->
@@ -97,7 +90,7 @@ wait_tasks_in_work(State)->
 .
    
 revertkey(Command)->
-   lists:foldl(fun(Key, Url) -> << "/", Key/binary >>   end, <<>>, Command)
+   lists:foldl(Key, Url) -> << "/", Key/binary >>   end, <<>>, Command)
 .
    
 process_delayed_task(Command,  UserId, State)->
@@ -110,14 +103,14 @@ process_delayed_task(Command,  UserId, State)->
         false -> 
                 case api_table_holder:find_in_cache(Key) of
                     false-> 
-                         ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
+                    ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
                         api_table_holder:start_task(Key, [ {user_id, list_to_binary(integer_to_list(UserId)) }] ),
                         Tasks = State#chat_state.tasks,    
-                        { wait_response(), State#chat_state{tasks=[Key|Tasks] } }; 
+                        { wait_response(), State#chat_state{tasks=[Key|Tasks] } } 
                     Val -> 
                         ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                         Tasks = State#chat_state.tasks,    
-                        {Val, State#chat_state{tasks=lists:delete(Key, Tasks) }} 
+                        {Val, State#chat_state{tasks=lists:delete(Key, Tasks) } 
                 end;
         Result ->
             %% add here timeout of repeat execution, or failed tasks
@@ -127,8 +120,8 @@ process_delayed_task(Command,  UserId, State)->
     end.
 
 looking4finshed(ResTime, UserId, State)-> 
-      BinUserId = list_to_binary(integer_to_list(UserId)),
-      case wait_tasks_in_work(State) of 
+    ?CONSOLE_LOG(" check finished  tasks for ~p ~n",[ UserId ]),
+    case wait_tasks_in_work(State) of 
         {[], NewState}  ->  {erws_api:json_encode({ResTime}), NewState };
         { Result, NewState } -> 
                                 %% NOT very good way of producings delayed tasks
@@ -171,10 +164,10 @@ process({[{<<"ping">>, true}] }, undefined, State)->
 %TODO
 % check ready tasks if existed return it all
 process( ReqJson = {[{<<"ping">>, true}]}, UserId, State)->
-    ?CONSOLE_LOG("session obj ~p ~n",[SessionObj]),
     UserIdBinary = list_to_binary(integer_to_list(UserId)),
     SessionKey =  State#chat_state.sessionkey,
     SessionObj =  State#chat_state.sessionobj,
+    ?CONSOLE_LOG("session obj ~p ~n",[SessionObj]),
     ?CONSOLE_LOG("user id ~p~n", [UserIdBinary]), 
     SessionKeyCustom = list_to_binary(erws_api:hexstring(crypto:hash(sha256, <<?KEY_PREFIX, SessionKey/binary, UserIdBinary/binary>>))), 
     ResTime = [
@@ -204,11 +197,10 @@ auth_user(CookieSession)->
               SessionObj =  erws_api:load_user_session(erws_api:django_session_key(CookieSession)),
               ?CONSOLE_LOG(" load session ~p ~n",[SessionObj]),
               case SessionObj of 
-                undefined -> undefined;
-                {session, undefined, _SessionKey} -> undefined;
-                {session, SessionObj, _SessionKey}->
+                undefined -> {undefined, dict:new()};
+                SessionObj ->
                     case erws_api:get_key_dict(SessionObj, <<"user_id">>, false) of
-                            false -> undefined;
+                            false -> {undefined, SessionObj};
                             UserId-> {UserId, SessionObj}
                     end
               end      
