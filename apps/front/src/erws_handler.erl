@@ -90,9 +90,30 @@ wait_tasks_in_work(State)->
 .
    
 revertkey(Command)->
-   lists:foldl(Key, Url) -> << "/", Key/binary >>   end, <<>>, Command)
+   lists:foldl(fun(Key, Url) -> << "/", Key/binary >>   end, <<>>, Command)
 .
-   
+
+process_delayed_task(Command,  undefined, State)->
+    Key =  string:tokens(Command),
+    case api_table_holder:check_task_in_work(Key,  State)  of 
+        false -> 
+                case api_table_holder:find_in_cache(Key) of
+                    false-> 
+                        ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
+                        api_table_holder:start_task(Key, [] ),
+                        Tasks = State#chat_state.tasks,    
+                        { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
+                    Val -> 
+                        ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+                        Tasks = State#chat_state.tasks,    
+                        {Val, State#chat_state{tasks=lists:delete(Key, Tasks) } 
+                end;
+        Result ->
+            %% add here timeout of repeat execution, or failed tasks
+            ?CONSOLE_LOG(" we have found  task in work ~p ~n",[ Key ]),
+            Tasks = State#chat_state.tasks,    
+            { wait_response(), State#chat_state{tasks=[Key|Tasks] } } 
+    end;
 process_delayed_task(Command,  UserId, State)->
     StringTokens =  string:tokens(Command),
     Key = case api_table_holder:public(StringTokens) of 
@@ -103,10 +124,10 @@ process_delayed_task(Command,  UserId, State)->
         false -> 
                 case api_table_holder:find_in_cache(Key) of
                     false-> 
-                    ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
+                        ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
                         api_table_holder:start_task(Key, [ {user_id, list_to_binary(integer_to_list(UserId)) }] ),
                         Tasks = State#chat_state.tasks,    
-                        { wait_response(), State#chat_state{tasks=[Key|Tasks] } } 
+                        { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
                     Val -> 
                         ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                         Tasks = State#chat_state.tasks,    
