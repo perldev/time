@@ -61,7 +61,7 @@ start_task(Key)->
 .        
 check_task_in_work(Key)->
     case ets:lookup(tasks, Key)  of 
-        [ {Key,  _Pid} ] ->  Result;
+        [ Result = {Key,  _Pid} ] ->  Result;
         [] ->   false
     end                 
 .        
@@ -149,7 +149,7 @@ find_in_cache(Key)->
 
 run_http(GetUrl, Headers)->
    spawn_monitor(fun()->  
-                    ?CONSOLE_LOG(" task url  ~p ~p ~n",[ Host, GetUrl ]), 
+                    ?CONSOLE_LOG(" task url  ~p ~n",[  GetUrl ]), 
                     httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], [])
                  end) 
 .
