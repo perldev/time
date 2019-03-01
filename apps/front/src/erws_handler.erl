@@ -33,7 +33,8 @@ websocket_init(_Any, Req, []) ->
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
     ReqRes = cowboy_req:compact(Req_3),
-    {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, start=now(), ip=IP, tasks=[], sessionobj=SessionObj, sessionkey=CookieSession}, hibernate}.
+    {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, start=now(), ip=IP, tasks=[],
+                              sessionobj=SessionObj, sessionkey=CookieSession}, hibernate}.
 
 % Called when a text message arrives.
 websocket_handle({text, Msg}, Req, State =  #chat_state{index=Index}) ->

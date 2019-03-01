@@ -61,7 +61,7 @@ start_task(Key)->
 .        
 check_task_in_work(Key)->
     case ets:lookup(tasks, Key)  of 
-        [{Key, Result = {_Status, _Pid} } ] ->  Result;
+        [ {Key,  _Pid} ] ->  Result;
         [] ->   false
     end                 
 .        
