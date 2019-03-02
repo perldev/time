@@ -97,7 +97,7 @@ process_delayed_task(Key, Req, State)->
                        ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                        {raw_answer, {200, Val, headers_json_plain() },  Req, State}   
                end;
-     true->
+     _ ->
            ?CONSOLE_LOG(" we have found  task in work ~p ~n",[ Key ]),
            wait_response(Req, State)
  end
