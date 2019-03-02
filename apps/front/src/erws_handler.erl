@@ -94,8 +94,12 @@ revertkey(Command)->
    lists:foldl(fun(Key, Url) -> << "/", Key/binary >>   end, <<>>, Command)
 .
 
+my_tokens(String)->
+    binary:split(String, [<<"/">>],[global]).
+
+
 process_delayed_task(Command,  undefined, State)->
-    Key =  string:tokens(Command),
+    Key =  my_tokens(Command),
     case api_table_holder:check_task_in_work(Key,  State)  of 
         false -> 
                 case api_table_holder:find_in_cache(Key) of
@@ -116,10 +120,10 @@ process_delayed_task(Command,  undefined, State)->
             { wait_response(), State#chat_state{tasks=[Key|Tasks] } } 
     end;
 process_delayed_task(Command,  UserId, State)->
-    StringTokens =  string:tokens(Command),
+    StringTokens =  my_tokens(Command),
     Key = case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
-                  false -> string:tokens(StringTokens) ++ integer_to_list(UserId)
+                  false -> my_tokens(StringTokens) ++ list_to_binary(integer_to_list(UserId))
             end,
     case api_table_holder:check_task_in_work(Key,  State)  of 
         false -> 
