@@ -100,7 +100,7 @@ my_tokens(String)->
 
 process_delayed_task(Command,  undefined, State)->
     Key =  my_tokens(Command),
-    case api_table_holder:check_task_in_work(Key,  State)  of 
+    case api_table_holder:check_task_in_work(Key)  of 
         false -> 
                 case api_table_holder:find_in_cache(Key) of
                     false-> 
@@ -125,7 +125,7 @@ process_delayed_task(Command,  UserId, State)->
                   true ->  StringTokens;
                   false -> my_tokens(StringTokens) ++ list_to_binary(integer_to_list(UserId))
             end,
-    case api_table_holder:check_task_in_work(Key,  State)  of 
+    case api_table_holder:check_task_in_work(Key)  of 
         false -> 
                 case api_table_holder:find_in_cache(Key) of
                     false-> 
