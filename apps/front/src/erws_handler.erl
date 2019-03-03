@@ -132,7 +132,7 @@ start_delayed_task(Command,  UserId, State)->
                 case api_table_holder:find_in_cache(Key) of
                     false-> 
                         ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                        api_table_holder:start_task(Key, [ {user_id, list_to_binary(integer_to_list(UserId)) }] ),
+                        api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }] ),
                         Tasks = State#chat_state.tasks,    
                         { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
                     Val -> 

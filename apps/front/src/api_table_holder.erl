@@ -222,7 +222,7 @@ route_search(Key, [{Prefix, Host}|Tail]) ->
 
  
 process_params2headers({user_id, Value})->
-  {<<"X-Forwarded-User">>, Value}
+  {"X-Forwarded-User", Value}
 .
       
 start_asyn_task(KeyPath, Params, State)->
