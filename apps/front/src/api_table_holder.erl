@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([start_link/0, stop/0, status/0, check_task_in_work/1, find_in_cache/1, start_task/1, start_task_brutal/1, start_task/2]).
+-export([start_link/0, stop/0, status/0, check_task_in_work/1, find_in_cache/1, start_task/1, start_task_brutal/1, start_task/2, public/1]).
 
 -include("erws_console.hrl").
 
