@@ -149,7 +149,7 @@ looking4finshed(ResTime, undefined, State)->
       ?CONSOLE_LOG(" looking finished tasks for anonym ~p ~n",[ResTime ]),
       case wait_tasks_in_work(State) of 
         {[], NewState}  ->  {<< "{\"time_object\":", ResTime/binary,"}">> , NewState };
-        { Result, NewState } -> 
+        { [Head|Result], NewState } -> 
                                 %% NOT very good way of producings delayed tasks
                                 ?CONSOLE_LOG("corrupt json in order to add  info from tasks  ~p ~n",[ResTime]),
                                 { FirstBinCommanKey, FirstBinaryValue} = Head,
