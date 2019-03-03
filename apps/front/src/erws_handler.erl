@@ -146,7 +146,7 @@ process_delayed_task(Command,  UserId, State)->
     end.
 
 looking4finshed(ResTime, undefined, State)-> 
-      ?CONSOLE_LOG(" looking finished tasks for anonym ~n",[ ]),
+      ?CONSOLE_LOG(" looking finished tasks for anonym ~p ~n",[ResTime ]),
       case wait_tasks_in_work(State) of 
         {[], NewState}  ->  {<< "{\"time_object\":", ResTime,"}">> , NewState };
         { Result, NewState } -> 
@@ -163,7 +163,7 @@ looking4finshed(ResTime, undefined, State)->
                             { <<ResBinary/binary, "}">>, NewState}
       end;    
 looking4finshed(ResTime, UserId, State)-> 
-      ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ UserId ]),
+      ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ ResTime ]),
       BinUserId = list_to_binary(integer_to_list(UserId)),
       case wait_tasks_in_work(State) of 
         {[], NewState}  ->  {<< "{\"time_object\":", ResTime,"}">> , NewState };
