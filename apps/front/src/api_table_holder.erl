@@ -230,7 +230,7 @@ start_asyn_task(KeyPath, Params, State)->
      Host = route_search(KeyPath, State#monitor.routes),
      Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
      Url = lists:foldl(fun(Key, Url) -> <<Url/binary,  "/", Key/binary >>   end, <<>>, KeyPath),
-     HostUrl = <<Host/binary,  Url/binary>>,
+     HostUrl = <<Host/binary,  Url/binary, "?api=erl">>,
      run_http(KeyPath, HostUrl, Headers)
 .
       
