@@ -166,7 +166,7 @@ looking4finshed(ResTime, UserId, State)->
       ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ UserId ]),
       BinUserId = list_to_binary(integer_to_list(UserId)),
       case wait_tasks_in_work(State) of 
-        {[], NewState}  ->  {<< "{\"time\":", ResTime,"}">> , NewState };
+        {[], NewState}  ->  {<< "{\"time_object\":", ResTime,"}">> , NewState };
         { [Head|Result], NewState } -> 
                                 %% NOT very good way of producings delayed tasks
                                 ?CONSOLE_LOG("corrupt json in order to add  info from tasks  ~p ~n",[ResTime]),
@@ -180,7 +180,7 @@ looking4finshed(ResTime, UserId, State)->
                                                                                               <<Binary/binary, ",",
                                                                                                 "\"",  Key/binary, "\":", %%join path for client 
                                                                                                 BinaryValue/binary>> end,  StartBinary, Result),
-                                {<< "{\"result\":{", ResBinary/binary,"},\"time\":", ResTime, "}">>, NewState}
+                                {<< "{\"result\":{", ResBinary/binary,"},\"time_object\":", ResTime, "}">>, NewState}
       end.
  
 process({[{<<"get">>, Var}]}, UserId, State)->
@@ -193,7 +193,7 @@ process({[{<<"get">>, Var}]}, UserId, State)->
     {Result, NewState} =  process_delayed_task(Var, UserId, State),
     ResTime = restime(UserId, State),
     ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ UserId ]),
-    {<< "{\"result\":", Result/binary,",\"time\":",ResTime,"}">>, NewState}
+    {<< "{\"result\":", Result/binary,",\"time_object\":",ResTime,"}">>, NewState}
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->
       ResTime = restime(undefined, State),
