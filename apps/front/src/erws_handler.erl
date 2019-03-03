@@ -194,7 +194,7 @@ process({[{<<"get">>, Var}]}, UserId, State)->
     {Result, NewState} =  process_delayed_task(Var, UserId, State),
     ResTime = restime(UserId, State),
     ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ UserId ]),
-    {<< "{\"result\":", Result/binary,",\"time_object\":",ResTime,"}">>, NewState}
+    {<< "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">>, NewState}
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->
       ResTime = restime(undefined, State),
