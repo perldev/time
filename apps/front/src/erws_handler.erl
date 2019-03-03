@@ -81,6 +81,7 @@ wait_response()->
    
 wait_tasks_in_work(State)->
     lists:foldl(fun(Key, {List, TempState})-> 
+                    ?CONSOLE_LOG(" check key from cache ~p ~n",[ Key ]),
                     case api_table_holder:find_in_cache(Key) of 
                         false -> {List, TempState};
                         Val -> 
