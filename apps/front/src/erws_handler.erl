@@ -148,7 +148,7 @@ process_delayed_task(Command,  UserId, State)->
 looking4finshed(ResTime, undefined, State)-> 
       ?CONSOLE_LOG(" looking finished tasks for anonym ~n",[ ]),
       case wait_tasks_in_work(State) of 
-        {[], NewState}  ->  {erws_api:json_encode({ResTime}), NewState };
+        {[], NewState}  ->  {<< "{\"time_object\":", ResTime,"}">> , NewState };
         { Result, NewState } -> 
                                 %% NOT very good way of producings delayed tasks
                                 TempBinary =  erws_api:json_encode({ResTime}),
