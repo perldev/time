@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
--export([start_link/0, stop/0, status/0, check_task_in_work/1, find_in_cache/1, start_task/1, start_task_brutal/1, start_task/2, public/1]).
+-export([start_link/0, stop/0, status/0, check_task_in_work/1, find_in_cache/1, save_in_cache/2, start_task/1, start_task_brutal/1, start_task/2, public/1]).
 
 -include("erws_console.hrl").
 
@@ -147,17 +147,49 @@ find_in_cache(Key)->
     ?CONSOLE_LOG(" unrecognized search   ~p ~n",[Key]),
     false.
 
-run_http(GetUrl, Headers)->
+
+save_in_cache([<<"api">>, <<"trades">>, <<"buy">>, Var], Val)->
+   MemKey = <<?KEY_PREFIX, "buy_list_", Var/binary>>,
+   ?CONSOLE_LOG("save key  ~p ~n",[MemKey]),
+   mcd:set(?LOCAL_CACHE, MemKey, Val);
+save_in_cache([<<"api">>, <<"trades">>, <<"sell">>, Var], Val)->
+   MemKey = <<?KEY_PREFIX, "sell_list_", Var/binary>>,
+   ?CONSOLE_LOG("save key  ~p ~n",[MemKey]),
+   mcd:set(?LOCAL_CACHE, MemKey, Val);
+save_in_cache([<<"api">>, <<"deals">>, Var], Val)->
+   MemKey = <<?KEY_PREFIX, "deal_list_", Var/binary>>,
+   ?CONSOLE_LOG("save key  ~p ~n",[MemKey]),
+   mcd:set(?LOCAL_CACHE, MemKey, Val);
+save_in_cache([<<"api">>, <<"japan_stat">>, <<"high">>, Var], Val)->
+   MemKey = <<?KEY_PREFIX, "high_japan_stat_", Var/binary>>,
+   ?CONSOLE_LOG("save key  ~p ~n",[MemKey]),
+   mcd:set(?LOCAL_CACHE, MemKey, Val);
+save_in_cache([<<"api">>, <<"balance">>,  Var], Val)->
+   MemKey = <<?KEY_PREFIX, "balance_", Var/binary>>,
+   ?CONSOLE_LOG("save key  ~p ~n",[MemKey]),
+   mcd:set(?LOCAL_CACHE, MemKey, Val);
+save_in_cache([<<"api">>, <<"market_prices">>], Val)->
+   MemKey = <<?KEY_PREFIX, "market_prices">>,
+   ?CONSOLE_LOG("save key  ~p ~n",[MemKey]),
+   mcd:set(?LOCAL_CACHE, MemKey, Val);
+save_in_cache(Key, Val)->
+    ?CONSOLE_LOG(" unrecognized save   ~p ~n",[Key]),
+    false.
+
+    
+    
+    
+
+run_http(Key, GetUrl, Headers)->
+   ?CONSOLE_LOG("start separte process ~p with url  ~p with headers ~p  ~n",[ Key, GetUrl, Headers ]), 
    spawn_monitor(fun()->  
-                    ?CONSOLE_LOG(" task url  ~p ~n",[  GetUrl ]), 
-                    httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], [])
+                     {ok, Result} = httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], [{body_format, binary}]),
+                     {_Status, _Headers, Body}  = Result, 
+                     api_table_holder:save_in_cache(Key, Body)        
+                    
                  end) 
 .
  
-
-run_http( GetUrl)->
-   run_http(GetUrl, [])
-.
 
 
 public(Key = [<<"api">>, <<"my_orders">>, Var | Tail])->
@@ -178,16 +210,16 @@ public(Key = [<<"api">>, <<"market_prices">> | Tail])->
       true.   
       
 
- 
+route_search(Key, [{<<>>, Host}]) -> %% yes it's match everything
+   Host
+; 
 route_search(Key, [{Prefix, Host}|Tail]) ->
     case lists:prefix(Prefix, Key) of
        true -> Host;
        false-> route_search(Key, Tail)
     end
-;
-route_search(Key, [{<<>>, Host}]) -> %% yes it's match everything
-   Host
 .
+
  
 process_params2headers({user_id, Value})->
   {<<"X-Forwarded-User">>, Value}
@@ -198,7 +230,7 @@ start_asyn_task(KeyPath, Params, State)->
      Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
      Url = lists:foldl(fun(Key, Url) -> <<Url/binary,  "/", Key/binary >>   end, <<>>, KeyPath),
      HostUrl = <<Host/binary,  Url/binary>>,
-     run_http(HostUrl, Headers)
+     run_http(KeyPath, HostUrl, Headers)
 .
       
 

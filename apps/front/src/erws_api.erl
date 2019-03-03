@@ -89,7 +89,7 @@ process_delayed_task(Key, Req, State)->
                case api_table_holder:find_in_cache(Key) of
                   false-> 
 
-                           ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
+                           ?CONSOLE_LOG("start task ~p ~n",[ Key]),
                            api_table_holder:start_task(Key), 
                            wait_response(Req, State); 
                   Val -> 
