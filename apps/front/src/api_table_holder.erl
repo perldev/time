@@ -230,7 +230,8 @@ handle_cast({start_task_brutal, Key, Params }, MyState) ->
        
 handle_cast({start_task, Key, Params }, MyState) ->
     case dict:find(Key, MyState#monitor.tasks) of
-          {ok, Value} ->  {noreply, MyState};
+          {ok, Value} ->  
+            {noreply, MyState};
           error ->
                 {Pid, Mont} = start_asyn_task(Key, Params, MyState),
                 DictNew1 = dict:store(Pid, Key, MyState#monitor.pids),

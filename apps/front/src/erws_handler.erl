@@ -98,22 +98,21 @@ my_tokens(String)->
     binary:split(String, [<<"/">>],[global]).
 
 
-process_delayed_task(Command,  undefined, State)->
+start_delayed_task(Command,  undefined, State)->
     Key =  my_tokens(Command),
     case api_table_holder:check_task_in_work(Key)  of 
         false -> 
                 case api_table_holder:find_in_cache(Key) of
-                    false-> 
-                        ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                        api_table_holder:start_task(Key, [] ),
-                        Tasks = State#chat_state.tasks,    
-                        { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
-                    Val -> 
-                        ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
-                        Tasks = State#chat_state.tasks,    
-                        BinCommanKey = revertkey(Key),
-
-                        { << "{","\"",BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
+                     false-> 
+                         ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
+                         api_table_holder:start_task(Key, [] ),
+                         Tasks = State#chat_state.tasks,    
+                         { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
+                     Val -> 
+                         ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+                         Tasks = State#chat_state.tasks,    
+                         BinCommanKey = revertkey(Key),
+                         { << "{","\"",BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
                 end;
         Result ->
             %% add here timeout of repeat execution, or failed tasks
@@ -121,7 +120,7 @@ process_delayed_task(Command,  undefined, State)->
             Tasks = State#chat_state.tasks,    
             { wait_response(), State#chat_state{tasks=[Key|Tasks] } } 
     end;
-process_delayed_task(Command,  UserId, State)->
+start_delayed_task(Command,  UserId, State)->
     StringTokens =  my_tokens(Command),
     Key = case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
@@ -149,7 +148,7 @@ process_delayed_task(Command,  UserId, State)->
     end.
 
 looking4finshed(ResTime, undefined, State)-> 
-      ?CONSOLE_LOG(" looking finished tasks for anonym ~p ~n",[ResTime ]),
+      ?CONSOLE_LOG(" looking finished tasks for anonym ~p ~p ~n",[ResTime, State]),
       case wait_tasks_in_work(State) of 
         {[], NewState}  ->  {<< "{\"time_object\":", ResTime/binary,"}">> , NewState };
         { [Head|Result], NewState } -> 
@@ -167,7 +166,7 @@ looking4finshed(ResTime, undefined, State)->
                                 
       end;    
 looking4finshed(ResTime, UserId, State)-> 
-      ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ ResTime ]),
+      ?CONSOLE_LOG(" looking finished tasks for ~p for ~p ~n",[ ResTime, State]),
       BinUserId = list_to_binary(integer_to_list(UserId)),
       case wait_tasks_in_work(State) of 
         {[], NewState}  ->  {<< "{\"time_object\":", ResTime/binary,"}">> , NewState };
@@ -194,7 +193,7 @@ process({[{<<"get">>, Var}]}, UserId, State)->
 % if tasks not exist start it gather user information
 %   starting tasks
 
-    {Result, NewState} =  process_delayed_task(Var, UserId, State),
+    {Result, NewState} =  start_delayed_task(Var, UserId, State),
     ResTime = restime(UserId, State),
     ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ UserId ]),
     {<< "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">>, NewState}
