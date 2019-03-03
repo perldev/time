@@ -193,10 +193,10 @@ process({[{<<"get">>, Var}]}, UserId, State)->
 % if task exist with result return it and pop from tasks
 % if tasks not exist start it gather user information
 %   starting tasks
+    ?CONSOLE_LOG(" get task for ~p ~p ~n",[ Var, UserId ]),
 
     {Result, NewState} =  start_delayed_task(Var, UserId, State),
     ResTime = restime(UserId, State),
-    ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ UserId ]),
     {<< "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">>, NewState}
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->
