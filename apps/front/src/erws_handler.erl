@@ -91,7 +91,7 @@ wait_tasks_in_work(State)->
 .
    
 revertkey(Command)->
-   lists:foldl(fun(Key, Url) -> << "/", Key/binary >>   end, <<>>, Command)
+   lists:foldl(fun(Key, Url) -> <<Url/binary, "/", Key/binary >>   end, <<>>, Command)
 .
 
 my_tokens(String)->
