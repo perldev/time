@@ -148,39 +148,40 @@ process_delayed_task(Command,  UserId, State)->
 looking4finshed(ResTime, undefined, State)-> 
       ?CONSOLE_LOG(" looking finished tasks for anonym ~p ~n",[ResTime ]),
       case wait_tasks_in_work(State) of 
-        {[], NewState}  ->  {<< "{\"time_object\":", ResTime,"}">> , NewState };
+        {[], NewState}  ->  {<< "{\"time_object\":", ResTime/binary,"}">> , NewState };
         { Result, NewState } -> 
                                 %% NOT very good way of producings delayed tasks
-                                TempBinary =  erws_api:json_encode({ResTime}),
-                                TempBinary2 = binary:replace(TempBinary, <<"}">>,<<>>),
-                                ?CONSOLE_LOG("corrupt json in order to add  info from tasks  ~p ~n",[TempBinary2]),
-                                ResBinary = lists:foldl(fun({ Command, BinaryValue}, Binary)->  
-                                                                                              Key = revertkey(Command),
-                                                                                              <<Binary/binary, ",\"",
-                                                                                              Key/binary, "\":", %%join path for client 
-                                                                                              BinaryValue/binary>> end, TempBinary2, Result),
+                                ?CONSOLE_LOG("corrupt json in order to add  info from tasks  ~p ~n",[ResTime]),
+                                { FirstBinCommanKey, FirstBinaryValue} = Head,
+                                FirstKey = revertkey(FirstBinCommanKey),
+                                StartBinary = <<"\"",FirstKey/binary, "\":", FirstBinaryValue/binary>>,  
+                                ResBinary = lists:foldl(fun({ BinCommanKey, BinaryValue}, Binary)->  
+                                                                                              Key = revertkey(BinCommanKey),
+                                                                                              <<Binary/binary, ",",
+                                                                                                "\"",  Key/binary, "\":", %%join path for client 
+                                                                                                BinaryValue/binary>> end,  StartBinary, Result),
+                                {<< "{\"result\":{", ResBinary/binary,"},\"time_object\":", ResTime/binary, "}">>, NewState}
                                 
-                            { <<ResBinary/binary, "}">>, NewState}
       end;    
 looking4finshed(ResTime, UserId, State)-> 
       ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ ResTime ]),
       BinUserId = list_to_binary(integer_to_list(UserId)),
       case wait_tasks_in_work(State) of 
-        {[], NewState}  ->  {<< "{\"time_object\":", ResTime,"}">> , NewState };
+        {[], NewState}  ->  {<< "{\"time_object\":", ResTime/binary,"}">> , NewState };
         { [Head|Result], NewState } -> 
                                 %% NOT very good way of producings delayed tasks
                                 ?CONSOLE_LOG("corrupt json in order to add  info from tasks  ~p ~n",[ResTime]),
                                 { FirstCommand, FirstBinaryValue} = Head,
                                 FirstBinCommanKey = lists:delete(BinUserId, FirstCommand),
                                 FirstKey = revertkey(FirstBinCommanKey),
-                                StartBinary = <<"\"",FirstKey/binary, "\":", FirstBinaryValue>>,  
+                                StartBinary = <<"\"",FirstKey/binary, "\":", FirstBinaryValue/binary>>,  
                                 ResBinary = lists:foldl(fun({ Command, BinaryValue}, Binary)->  
                                                                                               BinCommanKey = lists:delete(BinUserId, Command),
                                                                                               Key = revertkey(BinCommanKey),
                                                                                               <<Binary/binary, ",",
                                                                                                 "\"",  Key/binary, "\":", %%join path for client 
                                                                                                 BinaryValue/binary>> end,  StartBinary, Result),
-                                {<< "{\"result\":{", ResBinary/binary,"},\"time_object\":", ResTime, "}">>, NewState}
+                                {<< "{\"result\":{", ResBinary/binary,"},\"time_object\":", ResTime/binary, "}">>, NewState}
       end.
  
 process({[{<<"get">>, Var}]}, UserId, State)->
