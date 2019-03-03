@@ -166,20 +166,21 @@ looking4finshed(ResTime, UserId, State)->
       ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ UserId ]),
       BinUserId = list_to_binary(integer_to_list(UserId)),
       case wait_tasks_in_work(State) of 
-        {[], NewState}  ->  {erws_api:json_encode({ResTime}), NewState };
-        { Result, NewState } -> 
+        {[], NewState}  ->  {<< "{\"time\":", ResTime,"}">> , NewState };
+        { [Head|Result], NewState } -> 
                                 %% NOT very good way of producings delayed tasks
-                                TempBinary =  erws_api:json_encode({ResTime}),
-                                TempBinary2 = binary:replace(TempBinary, <<"}">>,<<>>),
-                                ?CONSOLE_LOG("corrupt json in order to add  info from tasks  ~p ~n",[TempBinary2]),
+                                ?CONSOLE_LOG("corrupt json in order to add  info from tasks  ~p ~n",[ResTime]),
+                                { FirstCommand, FirstBinaryValue} = Head,
+                                FirstBinCommanKey = lists:delete(BinUserId, FirstCommand),
+                                FirstKey = revertkey(FirstBinCommanKey),
+                                StartBinary = <<"\"",FirstKey/binary, "\":", FirstBinaryValue>>,  
                                 ResBinary = lists:foldl(fun({ Command, BinaryValue}, Binary)->  
                                                                                               BinCommanKey = lists:delete(BinUserId, Command),
                                                                                               Key = revertkey(BinCommanKey),
-                                                                                              <<Binary/binary, ",\"",
-                                                                                              Key/binary, "\":", %%join path for client 
-                                                                                              BinaryValue/binary>> end, TempBinary2, Result),
-                                
-                            { <<ResBinary/binary, "}">>, NewState}
+                                                                                              <<Binary/binary, ",",
+                                                                                                "\"",  Key/binary, "\":", %%join path for client 
+                                                                                                BinaryValue/binary>> end,  StartBinary, Result),
+                                {<< "{\"result\":{", ResBinary/binary,"},\"time\":", ResTime, "}">>, NewState}
       end.
  
 process({[{<<"get">>, Var}]}, UserId, State)->
@@ -190,10 +191,23 @@ process({[{<<"get">>, Var}]}, UserId, State)->
 %   starting tasks
 
     {Result, NewState} =  process_delayed_task(Var, UserId, State),
-    {Result, NewState}
+    ResTime = restime(UserId, State),
+    ?CONSOLE_LOG(" looking finished tasks for ~p ~n",[ UserId ]),
+    {<< "{\"result\":", Result/binary,",\"time\":",ResTime,"}">>, NewState}
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->
-    ResTime = [{<<"deal_comission">>, <<"0.1">>},
+      ResTime = restime(undefined, State),
+      looking4finshed(ResTime, undefined, State)
+;
+%TODO
+% check ready tasks if existed return it all
+process( ReqJson = {[{<<"ping">>, true}]}, UserId, State)->
+    ResTime = restime(UserId, State),
+    looking4finshed(ResTime, UserId, State)
+.
+
+restime(undefined, State)->
+      ResTime = [{<<"deal_comission">>, <<"0.1">>},
                {<<"use_f2a">>, false},
                {<<"logged">>, false},
                {<<"x-cache">>, true},
@@ -203,11 +217,9 @@ process({[{<<"ping">>, true}] }, undefined, State)->
       ResTime1  = erws_api:get_usd_rate(ResTime),
       ResTime2 = erws_api:get_time(ResTime1),
       ResTime3 = erws_api:get_state(ResTime2),
-      looking4finshed(ResTime3, undefined, State)
-;
-%TODO
-% check ready tasks if existed return it all
-process( ReqJson = {[{<<"ping">>, true}]}, UserId, State)->
+      erws_api:json_encode({ResTime3})
+;    
+restime(UserId, State)->
     UserIdBinary = list_to_binary(integer_to_list(UserId)),
     SessionKey =  State#chat_state.sessionkey,
     SessionObj =  State#chat_state.sessionobj,
@@ -229,9 +241,11 @@ process( ReqJson = {[{<<"ping">>, true}]}, UserId, State)->
     mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "user_", UserIdBinary/binary>>, pickle:term_to_pickle(SessionKey)),   
     ResTime1  = erws_api:get_usd_rate(ResTime),
     ResTime3 = erws_api:get_time(ResTime1),
-    %ResTime4 = erws_api:get_user_state(ResTime3, UserIdBinary),
     ResTime4 = erws_api:get_state(ResTime3),
-    looking4finshed(ResTime4, UserId, State).
+    erws_api:json_encode({ResTime4})
+.
+    
+    
     
 auth_user(CookieSession)->
        ?CONSOLE_LOG(" auth for session  ~p ~n",[ CookieSession]),
