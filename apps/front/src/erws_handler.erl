@@ -139,7 +139,7 @@ process_delayed_task(Command,  UserId, State)->
                         ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                         Tasks = State#chat_state.tasks,
                         BinCommanKey = revertkey(Key),
-                        {  << "{","\"",BinCommanKey/binary, "\":", Val/binary, "}">>,, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
+                        {  << "{", "\"" , BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
                 end;
         Result ->
             %% add here timeout of repeat execution, or failed tasks
