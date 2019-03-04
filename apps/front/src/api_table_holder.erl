@@ -295,7 +295,6 @@ handle_cast( archive_mysql_start, MyState) ->
 handle_info({http, {ReqestId, Result}}, State )->
     {Status, _Headers, Body}  = Result,
     ?CONSOLE_LOG("get child process ~p ~p ~n", [ReqestId, Body]),
-    %%TODO process 500 response
       
      case  dict:find(ReqestId, State#monitor.pids) of 
           {ok, Key}->
@@ -303,7 +302,7 @@ handle_info({http, {ReqestId, Result}}, State )->
               DictNew2 = dict:erase(Key, State#monitor.tasks),
               ets:delete(tasks, Key),
               case ets:lookup(waitcache, Key ) of %%check wait list
-                 [{Key, WaitList, Result}] ->
+                 [{Key, WaitList}] ->
                     lists:foreach(fun(Pid)->  Pid ! {task_result, Key, Body, Status} end, WaitList), %%send body to all subscribers  
                     ets:delete(waitcache, Key),
                     {noreply,  State}; % save result to wait list if using local cache
