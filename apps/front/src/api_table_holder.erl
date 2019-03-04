@@ -26,10 +26,11 @@ start_link() ->
 
 init([]) ->
         Tid = ets:new(tasks, [set, protected, named_table, {heir,none},
-                              {write_concurrency,false}, {read_concurrency,true}]),
+                              {write_concurrency, false}, {read_concurrency,true}]),
         
         TidCache = ets:new(waitcache, [set, public, named_table, {heir,none},
                               {write_concurrency,false}, {read_concurrency,true}]),
+                              
         {ok, Routes} = application:get_env(front, routes),
         {ok, #monitor{
                          tasks = dict:new() ,

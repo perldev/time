@@ -33,6 +33,7 @@ websocket_init(_Any, Req, []) ->
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
     ReqRes = cowboy_req:compact(Req_3),
+    
     {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, start=now(), ip=IP, tasks=[],
                               sessionobj=SessionObj, sessionkey=CookieSession}, hibernate}.
 
@@ -122,7 +123,7 @@ start_delayed_task(Command,  UserId, State)->
                   true ->  StringTokens;
                   false -> my_tokens(StringTokens) ++ list_to_binary(integer_to_list(UserId))
             end,
-    case api_table_holder:find_in_cache(Key) of
+    case api_table_holder:find_in_cache(Key, SessionKey) of
                 false-> 
                     ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
                     api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }], SessionKey),
