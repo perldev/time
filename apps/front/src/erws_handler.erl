@@ -80,9 +80,10 @@ wait_response()->
 
    
 wait_tasks_in_work(State)->
+    SessionKey = State#chat_state.sessionkey,
     lists:foldl(fun(Key, {List, TempState})-> 
-                    ?CONSOLE_LOG(" check key from cache ~p ~n",[ Key ]),
-                    case api_table_holder:find_in_cache(Key) of 
+                    ?CONSOLE_LOG(" check key from erws handler ~p ~n",[ Key ]),
+                    case api_table_holder:find_in_cache(Key, SessionKey) of 
                         false -> {List, TempState};
                         Val -> 
                             Tasks = State#chat_state.tasks,    
@@ -101,52 +102,39 @@ my_tokens(String)->
 
 start_delayed_task(Command,  undefined, State)->
     Key =  my_tokens(Command),
-    case api_table_holder:check_task_in_work(Key)  of 
-        false -> 
-                case api_table_holder:find_in_cache(Key) of
-                     false-> 
-                         ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                         api_table_holder:start_task(Key, [] ),
-                         Tasks = State#chat_state.tasks,    
-                         { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
-                     Val -> 
-                         ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
-                         Tasks = State#chat_state.tasks,    
-                         BinCommanKey = revertkey(Key),
-                         { << "{","\"",BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
-                end;
-        Result ->
-            %% add here timeout of repeat execution, or failed tasks
-            ?CONSOLE_LOG(" we have found  task in work ~p ~n",[ Key ]),
-            Tasks = State#chat_state.tasks,    
-            { wait_response(), State#chat_state{tasks=[Key|Tasks] } } 
+    SessionKey = State#chat_state.sessionkey,
+    case api_table_holder:find_in_cache(Key, SessionKey) of
+                false-> 
+                    ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
+                    api_table_holder:start_task(Key, [], SessionKey ),
+                    Tasks = State#chat_state.tasks,    
+                    { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
+                Val -> 
+                    ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+                    Tasks = State#chat_state.tasks,    
+                    BinCommanKey = revertkey(Key),
+                    { << "{","\"",BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
     end;
 start_delayed_task(Command,  UserId, State)->
     StringTokens =  my_tokens(Command),
-    Key = case api_table_holder:public(StringTokens) of 
+    SessionKey = State#chat_state.sessionkey,
+    Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
                   false -> my_tokens(StringTokens) ++ list_to_binary(integer_to_list(UserId))
             end,
-    case api_table_holder:check_task_in_work(Key)  of 
-        false -> 
-                case api_table_holder:find_in_cache(Key) of
-                    false-> 
-                        ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                        api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }] ),
-                        Tasks = State#chat_state.tasks,    
-                        { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
-                    Val -> 
-                        ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
-                        Tasks = State#chat_state.tasks,
-                        BinCommanKey = revertkey(Key),
-                        {  << "{", "\"" , BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
-                end;
-        Result ->
-            %% add here timeout of repeat execution, or failed tasks
-            ?CONSOLE_LOG(" we have found  task in work ~p ~n",[ Key ]),
-            Tasks = State#chat_state.tasks,    
-            { wait_response(), State#chat_state{tasks=[Key|Tasks] } } 
+    case api_table_holder:find_in_cache(Key) of
+                false-> 
+                    ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
+                    api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }], SessionKey),
+                    Tasks = State#chat_state.tasks,    
+                    { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
+                Val -> 
+                    ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+                    Tasks = State#chat_state.tasks,
+                    BinCommanKey = revertkey(Key),
+                    {  << "{", "\"" , BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
     end.
+       
 
 looking4finshed(ResTime, undefined, State)-> 
       ?CONSOLE_LOG(" looking finished tasks for anonym ~p ~p ~n",[ResTime, State]),
