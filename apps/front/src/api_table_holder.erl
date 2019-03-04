@@ -293,7 +293,7 @@ handle_cast( archive_mysql_start, MyState) ->
     
 
 handle_info({http, {ReqestId, Result}}, State )->
-    {Status, _Headers, Body}  = Result,
+    { {HttpVer, Status, _HTTP}, _Headers, Body}  = Result,
     ?CONSOLE_LOG("get child process ~p ~p ~n", [ReqestId, Result]),
       
      case  dict:find(ReqestId, State#monitor.pids) of 
