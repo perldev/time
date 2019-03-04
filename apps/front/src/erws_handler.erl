@@ -116,7 +116,7 @@ wait_tasks_in_work(State)->
     SessionKey = State#chat_state.sessionkey,
     lists:foldl(fun(Key, {List, TempState})-> 
                     ?CONSOLE_LOG(" check key from erws handler ~p ~n",[ Key ]),
-                    case api_table_holder:find_in_cache(Key, SessionKey) of 
+                    case api_table_holder:find_in_cache(Key) of 
                         false -> {List, TempState};
                         Val -> 
                             Tasks = State#chat_state.tasks,    
