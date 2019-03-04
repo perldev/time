@@ -84,7 +84,7 @@ websocket_info({task_result, Key, _Body, _OtherOf200}, Req, State) ->
                    Value ->  BinUserId = list_to_binary( integer_to_list(Value)), lists:delete(BinUserId, Key)
                end,                 
       FirstKey = revertkey(PreKey),
-      ResBinary = <<"\"",FirstKey/binary, "\": false}" >>,  
+      ResBinary = <<"\"",FirstKey/binary, "\": false" >>,  
       Req2 = cowboy_req:compact(Req),
       Tasks =  State#chat_state.tasks,
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
