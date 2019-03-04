@@ -57,6 +57,38 @@ websocket_handle(Any, Req, State) ->
     {ok, Req, State}.
 
 % Other messages from the system are handled here.
+
+
+websocket_info({task_result, Key, Body, 200}, Req, State) ->
+      ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
+
+      ResTime = restime(State#chat_state.user_id, State),
+      ?CONSOLE_LOG("callback result of task  ~p for ~p ~n",[Key, State]),
+      PreKey = case State#chat_state.user_id of
+                   undefined -> Key;
+                   Value ->  BinUserId = list_to_binary( integer_to_list(Value)), lists:delete(BinUserId, Key)
+               end,                 
+      FirstKey = revertkey(PreKey),
+      ResBinary = <<"\"",FirstKey/binary, "\":", Body/binary>>,  
+      Req2 = cowboy_req:compact(Req),
+      Tasks =  State#chat_state.tasks,
+      {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
+               State#chat_state{tasks=lists:delete(Key, Tasks)} , hibernate};
+               
+websocket_info({task_result, Key, _Body, _OtherOf200}, Req, State) ->
+      ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
+      ResTime = restime(State#chat_state.user_id, State),
+      ?CONSOLE_LOG("callback result of task  ~p for ~p ~n",[Key, State]),
+      PreKey = case State#chat_state.user_id of
+                   undefined -> Key;
+                   Value ->  BinUserId = list_to_binary( integer_to_list(Value)), lists:delete(BinUserId, Key)
+               end,                 
+      FirstKey = revertkey(PreKey),
+      ResBinary = <<"\"",FirstKey/binary, "\": false}" >>,  
+      Req2 = cowboy_req:compact(Req),
+      Tasks =  State#chat_state.tasks,
+      {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
+               State#chat_state{tasks=lists:delete(Key, Tasks)} , hibernate};
 websocket_info(_Info, Req, State) ->
     ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
     {ok, Req, State, hibernate}.
@@ -103,11 +135,10 @@ my_tokens(String)->
 
 start_delayed_task(Command,  undefined, State)->
     Key =  my_tokens(Command),
-    SessionKey = State#chat_state.sessionkey,
-    case api_table_holder:find_in_cache(Key, SessionKey) of
+    case api_table_holder:find_in_cache(Key) of
                 false-> 
                     ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                    api_table_holder:start_task(Key, [], SessionKey ),
+                    api_table_holder:start_task(Key, [], self()),
                     Tasks = State#chat_state.tasks,    
                     { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
                 Val -> 
@@ -118,15 +149,14 @@ start_delayed_task(Command,  undefined, State)->
     end;
 start_delayed_task(Command,  UserId, State)->
     StringTokens =  my_tokens(Command),
-    SessionKey = State#chat_state.sessionkey,
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
                   false -> my_tokens(StringTokens) ++ list_to_binary(integer_to_list(UserId))
             end,
-    case api_table_holder:find_in_cache(Key, SessionKey) of
+    case api_table_holder:find_in_cache(Key) of
                 false-> 
                     ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                    api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }], SessionKey),
+                    api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }], self()),
                     Tasks = State#chat_state.tasks,    
                     { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
                 Val -> 
@@ -186,6 +216,7 @@ process({[{<<"get">>, Var}]}, UserId, State)->
 
     {Result, NewState} =  start_delayed_task(Var, UserId, State),
     ResTime = restime(UserId, State),
+    
     {<< "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">>, NewState}
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->

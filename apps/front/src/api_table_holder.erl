@@ -4,7 +4,7 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/0, stop/0, status/0, check_task_in_work/1, find_in_cache/1, 
-         start_task/1, start_task_brutal/1, start_task/2, start_task/3, public/1, find_in_cache/2]).
+         start_task/1, start_task_brutal/1, start_task/2, start_task/3, public/1]).
 
 -include("erws_console.hrl").
 
@@ -28,7 +28,7 @@ init([]) ->
         Tid = ets:new(tasks, [set, protected, named_table, {heir,none},
                               {write_concurrency, false}, {read_concurrency,true}]),
         
-        TidCache = ets:new(waitcache, [set, public, named_table, {heir,none},
+        TidCache = ets:new(waitcache, [set, protected, named_table, {heir,none},
                               {write_concurrency,false}, {read_concurrency,true}]),
                               
         {ok, Routes} = application:get_env(front, routes),
@@ -161,52 +161,16 @@ find_in_cache(Key)->
     false.
 
     
-
-find_in_cache(Key = [<<"api">>, <<"trades">>, <<"buy">>, Var], Key2)->
- check_ets_cache(Key, Key2);
-find_in_cache(Key = [<<"api">>, <<"trades">>, <<"sell">>, Var], Key2)->
- check_ets_cache(Key, Key2);
-find_in_cache(Key = [<<"api">>, <<"deals">>, Var], Key2)->
- check_ets_cache(Key, Key2);
-find_in_cache(Key = [<<"api">>, <<"japan_stat">>, <<"high">>, Var], Key2)->
- check_ets_cache(Key, Key2);
-find_in_cache(Key = [<<"api">>, <<"balance">>,  Var], Key2)->
- check_ets_cache(Key, Key2);
-find_in_cache(Key = [<<"api">>, <<"market_prices">>], Key2)->
- check_ets_cache(Key, Key2);
-find_in_cache(Key, Key2)->
-    ?CONSOLE_LOG(" unrecognized search   ~p ~p ~n",[Key, Key2]),
-    false.
-
-check_ets_cache(Key, Key2)->
- case ets:lookup(waitcache, Key ) of
-    [{Key, WaitList, <<>>}] ->
-        false;
-    [{Key, WaitList, Val}] ->
-        case lists:member(WaitList, Key2) of
-           true->
-                ?CONSOLE_LOG(" get local from cache  for ~p to ~p  ~p~n",[Key, Key2, Val]),
-                case lists:delete(Key2, WaitList) of
-                    []-> %waitlist is empty
-                        ets:delete(waitcache, Key);
-                    NewWaitList ->   
-                        ets:insert(waitcache, {Key, NewWaitList, Val})
-                end;
-            False -> False
-        end;
-     _ ->
-        false
-  end.
 subscribe_on_cache(K1, K2)->
     case ets:lookup(waitcache, K1 ) of %%check wait list
-        [{Key, WaitList, BodyWait}] ->
+        [{K1, WaitList}] ->
                case lists:member(K2, WaitList) of 
-                  false -> ets:insert(waitcache, {Key, [K2| WaitList], BodyWait} );
+                  false -> ets:insert(waitcache, {K1, [K2| WaitList]} );
                   true ->  ok  %almost impossible position cause check_ets_cache
                end;
             % save result to wait list if using local cache
         [] -> 
-            ets:insert(waitcache, {K1, [K2], <<>>} ) %%initilize wait list                
+            ets:insert(waitcache, {K1, [K2]} ) %%initilize wait list                
     end.
 
     
@@ -329,9 +293,10 @@ handle_cast( archive_mysql_start, MyState) ->
     
 
 handle_info({http, {ReqestId, Result}}, State )->
-    {_Status, _Headers, Body}  = Result,
+    {Status, _Headers, Body}  = Result,
     ?CONSOLE_LOG("get child process ~p ~p ~n", [ReqestId, Body]),
     %%TODO process 500 response
+      
      case  dict:find(ReqestId, State#monitor.pids) of 
           {ok, Key}->
               DictNew1 = dict:erase(ReqestId, State#monitor.pids),
@@ -339,8 +304,9 @@ handle_info({http, {ReqestId, Result}}, State )->
               ets:delete(tasks, Key),
               case ets:lookup(waitcache, Key ) of %%check wait list
                  [{Key, WaitList, Result}] ->
-                   ets:insert(waitcache, {Key, WaitList, Body}),
-                   {noreply,  State}; % save result to wait list if using local cache
+                    lists:foreach(fun(Pid)->  Pid ! {task_result, Key, Body, Status} end, WaitList), %%send body to all subscribers  
+                    ets:delete(waitcache, Key),
+                    {noreply,  State}; % save result to wait list if using local cache
                  [] -> {noreply,  State} %%thereis no wait list
               end;
           error ->   
