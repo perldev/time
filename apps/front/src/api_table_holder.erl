@@ -301,12 +301,14 @@ handle_info({http, {ReqestId, Result}}, State )->
               DictNew1 = dict:erase(ReqestId, State#monitor.pids),
               DictNew2 = dict:erase(Key, State#monitor.tasks),
               ets:delete(tasks, Key),
+              NewState = State#monitor{pids=DictNew1, tasks=DictNew2}, 
               case ets:lookup(waitcache, Key ) of %%check wait list
                  [{Key, WaitList}] ->
                     lists:foreach(fun(Pid)->  Pid ! {task_result, Key, Body, Status} end, WaitList), %%send body to all subscribers  
                     ets:delete(waitcache, Key),
-                    {noreply,  State}; % save result to wait list if using local cache
-                 [] -> {noreply,  State} %%thereis no wait list
+                    {noreply, NewState}; % save result to wait list if using local cache
+                 [] -> 
+                    {noreply,  NewState} %%thereis no wait list
               end;
           error ->   
              ?CONSOLE_LOG("something wrong with state for this reqest ~p ~p ~n", [ReqestId, Body]),
