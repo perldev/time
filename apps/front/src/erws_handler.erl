@@ -61,11 +61,12 @@ websocket_handle(Any, Req, State) ->
 % Other messages from the system are handled here.
 
 
-websocket_info({task_result, Key, Body, 200}, Req, State) ->
+websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
       ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
 
       ResTime = restime(State#chat_state.user_id, State),
-      ?CONSOLE_LOG("callback result of task  ~p for ~p ~n",[Key, State]),
+      ?CONSOLE_LOG("callback result of task  ~p for ~p ~n",[MyKey, State]),
+      {Key, Params} = MyKey,
       PreKey = case State#chat_state.user_id of
                    undefined -> Key;
                    Value ->  BinUserId = list_to_binary( integer_to_list(Value)), lists:delete(BinUserId, Key)
@@ -77,9 +78,10 @@ websocket_info({task_result, Key, Body, 200}, Req, State) ->
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
                State#chat_state{tasks=lists:delete(Key, Tasks)} , hibernate};
                
-websocket_info({task_result, Key, _Body, _OtherOf200}, Req, State) ->
+websocket_info({task_result, MyKey, _Body, _OtherOf200}, Req, State) ->
       ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
       ResTime = restime(State#chat_state.user_id, State),
+      {Key, Params} = MyKey,
       ?CONSOLE_LOG("callback result of task  ~p for ~p ~n",[Key, State]),
       PreKey = case State#chat_state.user_id of
                    undefined -> Key;
