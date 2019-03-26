@@ -131,7 +131,7 @@ revertkey(Command)->
    lists:foldl(fun(Key, Url) -> <<Url/binary, "/", Key/binary >>   end, <<>>, Command)
 .
 
-my_tokens(String)->
+my_tokens(PreString)->
      [String|QTail]  = binary:split(PreString, [<<"?">>],[global]),
      binary:split(String, [<<"/">>],[global]).
 
