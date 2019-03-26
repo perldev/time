@@ -132,7 +132,8 @@ revertkey(Command)->
 .
 
 my_tokens(String)->
-    binary:split(String, [<<"/">>],[global]).
+     [String|QTail]  = binary:split(PreString, [<<"?">>],[global]),
+     binary:split(String, [<<"/">>],[global]).
 
 
 start_delayed_task(Command,  undefined, State)->
