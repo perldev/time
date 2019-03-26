@@ -4,20 +4,10 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/0, stop/0, status/0, check_task_in_work/1, find_in_cache/1, 
-         start_task/1, start_task_brutal/1, start_task/2, start_task/3, public/1]).
+         start_task/1, start_task_brutal/1, start_task/2, start_task/3, public/1, restartall/0]).
 
 -include("erws_console.hrl").
 
--record(monitor,{
-                  tasks,
-                  pids,
-                  tid,
-                  base_url = <<"http://127.0.0.1">>,
-                  routes = [],
-                  tidcache
-           %       base_url = <<"http://185.61.138.187">> 
-                  
-                }).
 
 
            
@@ -53,6 +43,10 @@ handle_call({check, Key }, _From, State) ->
 handle_call(status,_From ,State) ->
     ?LOG_DEBUG("get msg call ~p ~n", [status]),
     {reply, State, State};
+
+handle_call(restartall, From, State)->
+    NewState = restartall_taskinwork(State), 
+    {reply, NewState, NewState};    
 handle_call(Info,_From ,State) ->
     ?LOG_DEBUG("get msg call ~p ~n", [Info]),
     {reply, undefined , State}.
@@ -65,6 +59,9 @@ start_task_brutal(Key)->
 start_task(Key, Params)->
     gen_server:cast(?MODULE, {start_task, Key, Params}).
     
+restartall()->
+    gen_server:call(?MODULE, restartall).
+
     
 start_task(Key, Params, Session2Connect)->
     gen_server:cast(?MODULE, {start_task, Key, Params, Session2Connect}).
@@ -224,6 +221,21 @@ process_params2headers({user_id, Value})->
 .
 
 
+restartall_taskinwork(State)->
+    Tasks = State#monitor.tasks,
+    lists:foldl(fun(MyKey = {Key, Params}, StateTmp)-> 
+                      {ok, RequestId} = start_asyn_task(Key, Params, StateTmp),
+                      DictNew1 = dict:store(RequestId, MyKey, StateTmp#monitor.pids),
+                      DictNew2 = dict:store(MyKey, RequestId, StateTmp#monitor.tasks),
+                      % duplicate info to ets table
+                      ets:insert(tasks, {MyKey, RequestId}),
+                      StateTmp#monitor{tasks=DictNew2, 
+                                      pids=DictNew1} 
+                end,
+                State#monitor{tasks=dict:new(), pids=dict:new()}, 
+                dict:to_list(Tasks))
+.
+
 start_asyn_task(KeyPath, Params, State)->
      Host = route_search(KeyPath, State#monitor.routes),
      Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
@@ -234,37 +246,40 @@ start_asyn_task(KeyPath, Params, State)->
 
     
 handle_cast({start_task_brutal, Key, Params }, MyState) ->
+      MyKey = {Key, Params},
       {Pid, Mont} = start_asyn_task(Key, Params, MyState),
-       DictNew1 = dict:store(Pid, Key, MyState#monitor.pids),
-       DictNew2 = dict:store(Key, Pid, MyState#monitor.tasks),
+       DictNew1 = dict:store(Pid, MyKey, MyState#monitor.pids),
+       DictNew2 = dict:store(MyKey, Pid, MyState#monitor.tasks),
        % duplicate info to ets table
        ets:insert(tasks, {Key, Pid}),
        {noreply, MyState#monitor{tasks=DictNew2, pids=DictNew1 } };      
 %%HERE WebSocket
 handle_cast({start_task, Key, Params, Key2}, MyState) ->
-    case dict:find(Key, MyState#monitor.tasks) of
+   MyKey = {Key, Params},
+   case dict:find( MyKey, MyState#monitor.tasks) of
           {ok, Value} ->
-               subscribe_on_cache(Key, Key2),
+               subscribe_on_cache(MyKey, Key2),
                {noreply, MyState};
           error ->
                 {ok, RequestId} = start_asyn_task(Key, Params, MyState),
-                DictNew1 = dict:store(RequestId, Key, MyState#monitor.pids),
-                DictNew2 = dict:store(Key, RequestId, MyState#monitor.tasks),
+                DictNew1 = dict:store(RequestId, MyKey, MyState#monitor.pids),
+                DictNew2 = dict:store(MyKey, RequestId, MyState#monitor.tasks),
                 % duplicate info to ets table
-                ets:insert(tasks, {Key, RequestId}),
-                subscribe_on_cache(Key, Key2),                
+                ets:insert(tasks, {MyKey, RequestId}),
+                subscribe_on_cache(MyKey, Key2),                
                 {noreply, MyState#monitor{tasks=DictNew2, pids=DictNew1 } } 
    end;
 %%HERE we receive tasks from common ajax
 handle_cast({start_task, Key, Params}, MyState) ->
-    case dict:find(Key, MyState#monitor.tasks) of
+    MyKey = {Key, Params},
+    case dict:find(MyKey, MyState#monitor.tasks) of
           {ok, Value} ->  
             {noreply, MyState};
           error ->
                 {ok, RequestId} = start_asyn_task(Key, Params, MyState),
-                DictNew1 = dict:store(RequestId, Key, MyState#monitor.pids),
-                DictNew2 = dict:store(Key, RequestId, MyState#monitor.tasks),
-                ets:insert(tasks, {Key, RequestId}),
+                DictNew1 = dict:store(RequestId, MyKey, MyState#monitor.pids),
+                DictNew2 = dict:store(MyKey , RequestId, MyState#monitor.tasks),
+                ets:insert(tasks, { MyKey, RequestId}),
                 {noreply, MyState#monitor{tasks=DictNew2, pids=DictNew1 } } 
    end;
 handle_cast( archive_mysql_start, MyState) ->
@@ -315,7 +330,7 @@ handle_info({http, {ReqestId, Result}}, State )->
              {noreply,  State}
      end
 ;
-handle_info({'DOWN',Ref, process, Pid, Exit},  State)->
+handle_info({'DOWN', Ref, process, Pid, Exit},  State)->
     ?LOG_DEBUG("kill child process ~p ~p ~n", [Pid, Exit]),
      case  dict:find(Pid, State#monitor.pids) of 
           {ok, Key}->

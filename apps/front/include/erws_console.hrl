@@ -43,5 +43,16 @@
 ).
 
 
+-record(monitor,{
+                  tasks,
+                  pids,
+                  tid,
+                  base_url = <<"http://127.0.0.1">>,
+                  routes = [],
+                  tidcache
+           %       base_url = <<"http://185.61.138.187">> 
+                  
+                }).
+
 
 

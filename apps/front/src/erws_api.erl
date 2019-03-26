@@ -104,7 +104,16 @@ process_delayed_task(Key, Req, State)->
 
 .
 
-
+process([<<"tasks">>, <<"restartall">> ,<<"mysecretkey2">>], _, _Body, Req, State)->
+    TasksState = api_table_holder:restartall(),
+    Tasks = dict:to_list(TasksState#monitor.tasks),
+    ResTime = lists:map(fun({Elem, Val})-> { erws_handler:revertkey(Elem), list_to_binary(lists:flatten(io_lib:format("~p", [Val]))) } end, Tasks),
+    {json, {ResTime}, Req, State};
+process([<<"tasks">>, <<"mysecretkey2">>], _, _Body, Req, State)->
+    TasksState = api_table_holder:status(),
+    Tasks = dict:to_list(TasksState#monitor.tasks),
+    ResTime = lists:map(fun({Elem, Val})-> { erws_handler:revertkey(Elem), list_to_binary(lists:flatten(io_lib:format("~p", [Val]))) } end, Tasks),
+    {json, {ResTime}, Req, State};    
 process(Key = [<<"start">>, <<"api">>| Tail], _User, _Body, Req, State)->
     ?CONSOLE_LOG(" cold start ~p ~n",[ Key]),
     [_|Task] = Key,
@@ -124,7 +133,7 @@ process([<<"time">>], undefined, _Body, Req, State)->
       ResTime1  = get_usd_rate(ResTime),
       ResTime2 = get_time(ResTime1),
       ResTime3 = get_state(ResTime2),
-      {json, {ResTime3}, Req, State};
+      {json, {ResTime3}, Req, State};      
 process([<<"time">>], {api, UserId}, Body, Req, State)->
          ResTime = [
                     {<<"logged">>, true},
