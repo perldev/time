@@ -79,6 +79,7 @@ websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
                State#chat_state{tasks=lists:delete(Key, Tasks)} , hibernate};
                
 websocket_info({task_result, MyKey, _Body, _OtherOf200}, Req, State) ->
+      %%% TODO rework 500 task
       ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
       ResTime = restime(State#chat_state.user_id, State),
       {Key, Params} = MyKey,
