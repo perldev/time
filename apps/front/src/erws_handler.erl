@@ -262,7 +262,7 @@ restime(UserId, State)->
         {<<"status">>, true},
         {<<"sessionid">>, SessionKeyCustom},
         {<<"ui_settings">>, erws_api:get_key_dict(SessionObj, <<"ui_settings">>, [] ) },
-        {<<"ui_msg">>, erws_api:get_key_dict(SessionObj, <<"ui_msg">>, <<"hello world">> ) },
+        {<<"ui_msg">>, erws_api:get_key_dict(SessionObj, <<"ui_msg">>, <<"">> ) },
         {<<"user_custom_id">>, erws_api:get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
         {<<"use_f2a">>, erws_api:get_key_dict(SessionObj, <<"use_f2a">>, false) },
         {<<"deal_comission">>, erws_api:get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
