@@ -163,7 +163,7 @@ process([<<"time">>], {session, SessionObj, SessionKey}, _Body, Req, NewState)->
                     {<<"x-cache">>, true},
                     {<<"status">>, true},
                     {<<"sessionid">>, SessionKeyCustom},
-                    {<<"ui_settings">>, get_key_dict(SessionObj, <<"ui_settings">>, <<"{}">>) },                    
+                    {<<"ui_settings">>, get_key_dict(SessionObj, <<"ui_settings">>, []) },                    
                     {<<"user_custom_id">>, get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
                     {<<"use_f2a">>, get_key_dict(SessionObj, <<"use_f2a">>, false) },
                     {<<"deal_comission">>, get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
