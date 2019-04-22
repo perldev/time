@@ -328,11 +328,11 @@ dict_to_json(Dict)->
 .
 
 dict_to_json([], Accum)->
-     Accum;
+     {Accum};
 dict_to_json([{Key, Val}| Tail], Accum)->
     case checkdict(Val) of
         true -> 
-            ValNormal =  dict_to_json( dict:to_list(Val), []  ),
+            ValNormal =  {dict_to_json( dict:to_list(Val), []  )},
             dict_to_json(Tail, [{Key, ValNormal}|Accum]);
         false-> 
             case Val of
