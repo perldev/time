@@ -324,7 +324,7 @@ generate_key(Salt, Body)->
 %         ],	
 
 dict_to_json(Dict)->
-    dict_to_json(dict:to_list(D), [])
+    dict_to_json(dict:to_list(Dict), [])
 .
 
 dict_to_json([], Accum)->
@@ -332,7 +332,7 @@ dict_to_json([], Accum)->
 dict_to_json([{Key, Val}| Tail], Accum)->
     case checkdict(Val) of
         true -> 
-            ValNormal =  dict_to_json( dict:to_list(D), []  ),
+            ValNormal =  dict_to_json( dict:to_list(Val), []  ),
             dict_to_json(Tail, [{Key, ValNormal}|Accum]);
         false-> dict_to_json(Tail, [{Key, Val}|Accum])
     end.
