@@ -256,18 +256,24 @@ restime(UserId, State)->
     ?CONSOLE_LOG("session obj ~p ~n",[SessionObj]),
     ?CONSOLE_LOG("user id ~p~n", [UserIdBinary]), 
     SessionKeyCustom = list_to_binary(erws_api:hexstring(crypto:hash(sha256, <<?KEY_PREFIX, SessionKey/binary, UserIdBinary/binary>>))), 
+    UiSettingsJ = case erws_api:get_key_dict(SessionObj, <<"ui_settings">>, [] ) of
+                    [] - >  [];
+                    UiSettings -> ewrs_api:dict_to_json(UiSettings)
+                  end,
     ResTime = [
         {<<"logged">>, true},
         {<<"x-cache">>, true},
         {<<"status">>, true},
         {<<"sessionid">>, SessionKeyCustom},
-        {<<"ui_settings">>, erws_api:get_key_dict(SessionObj, <<"ui_settings">>, [] ) },
+        {<<"ui_settings">>, UiSettingsJ },
         {<<"ui_msg">>, erws_api:get_key_dict(SessionObj, <<"ui_msg">>, <<"">> ) },
         {<<"user_custom_id">>, erws_api:get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
         {<<"use_f2a">>, erws_api:get_key_dict(SessionObj, <<"use_f2a">>, false) },
         {<<"deal_comission">>, erws_api:get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
         ],		
     {pickle_unicode, UserName } = erws_api:get_key_dict(SessionObj, <<"username">>, {pickle_unicode, <<>>} ),
+    ?CONSOLE_LOG("time to user ~p ~n",[ResTime]),
+
     % move spawn
     mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "chat_", SessionKeyCustom/binary>>, pickle:term_to_pickle(UserName)),
     mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "user_", UserIdBinary/binary>>, pickle:term_to_pickle(SessionKey)),   
