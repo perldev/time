@@ -334,7 +334,13 @@ dict_to_json([{Key, Val}| Tail], Accum)->
         true -> 
             ValNormal =  dict_to_json( dict:to_list(Val), []  ),
             dict_to_json(Tail, [{Key, ValNormal}|Accum]);
-        false-> dict_to_json(Tail, [{Key, Val}|Accum])
+        false-> 
+            case Val of
+            {pickle_unicode, Val1} -> % do not save here not ASCII symbols
+                dict_to_json(Tail, [{Key, Val1}|Accum]);
+            Val1 -> % do not save here not ASCII symbols
+                dict_to_json(Tail, [{Key, Val1}|Accum])
+            end    
     end.
     
 checkdict(DictCand) when is_tuple(DictCand) andalso element(1, DictCand) =:= dict ->
