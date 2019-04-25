@@ -157,7 +157,7 @@ start_delayed_task(Command,  UserId, State)->
     StringTokens =  my_tokens(Command),
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
-                  false -> my_tokens(StringTokens) ++ list_to_binary(integer_to_list(UserId))
+                  false -> StringTokens ++ list_to_binary(integer_to_list(UserId))
             end,
     case api_table_holder:find_in_cache(Key) of
                 false-> 
@@ -257,7 +257,7 @@ restime(UserId, State)->
     ?CONSOLE_LOG("user id ~p~n", [UserIdBinary]), 
     SessionKeyCustom = list_to_binary(erws_api:hexstring(crypto:hash(sha256, <<?KEY_PREFIX, SessionKey/binary, UserIdBinary/binary>>))), 
     UiSettingsJ = case erws_api:get_key_dict(SessionObj, <<"ui_settings">>, [] ) of
-                    [] ->  [];
+                    [] - >  [];
                     UiSettings -> erws_api:dict_to_json(UiSettings)
                   end,
     ResTime = [
