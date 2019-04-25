@@ -78,20 +78,22 @@ websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
                State#chat_state{tasks=lists:delete(Key, Tasks)} , hibernate};
                
-websocket_info({task_result, MyKey, _Body, _OtherOf200}, Req, State) ->
+websocket_info({task_result, MyKey, _Body, OtherOf200}, Req, State) ->
       %%% TODO rework 500 task
-      ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
+      ?CONSOLE_LOG("info: ~p ~n ~p result is  ~p ~n~n", [Req, State, OtherOf200]),
       ResTime = restime(State#chat_state.user_id, State),
       {Key, Params} = MyKey,
       ?CONSOLE_LOG("callback result of task  ~p for ~p ~n",[Key, State]),
       PreKey = case State#chat_state.user_id of
                    undefined -> Key;
-                   Value ->  BinUserId = list_to_binary( integer_to_list(Value)), lists:delete(BinUserId, Key)
+                   Value ->  BinUserId = list_to_binary( integer_to_list(Value)), 
+                             lists:delete(BinUserId, Key)
                end,                 
       FirstKey = revertkey(PreKey),
       ResBinary = <<"\"",FirstKey/binary, "\": false" >>,  
       Req2 = cowboy_req:compact(Req),
       Tasks =  State#chat_state.tasks,
+      
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
                State#chat_state{tasks=lists:delete(Key, Tasks)} , hibernate};
 websocket_info(_Info, Req, State) ->
