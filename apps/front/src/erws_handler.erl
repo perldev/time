@@ -157,7 +157,7 @@ start_delayed_task(Command,  UserId, State)->
     StringTokens =  my_tokens(Command),
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
-                  false -> StringTokens ++ list_to_binary(integer_to_list(UserId))
+                  false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))]
             end,
     case api_table_holder:find_in_cache(Key) of
                 false-> 
