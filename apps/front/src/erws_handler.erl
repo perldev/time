@@ -35,8 +35,10 @@ websocket_init(_Any, Req, []) ->
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
     ReqRes = cowboy_req:compact(Req_3),
+     {ok, ApiToken} = application:get_env(front, token),
+
     
-    {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, start=now(), ip=IP, tasks=[],
+    {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, token=ApiToken, start=now(), ip=IP, tasks=[],
                               sessionobj=SessionObj, sessionkey=CookieSession}, hibernate}.
 
 % Called when a text message arrives.
@@ -164,7 +166,7 @@ start_delayed_task(Command,  UserId, State)->
     case api_table_holder:find_in_cache(Key) of
                 false-> 
                     ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                    api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }], self()),
+                    api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], self()),
                     Tasks = State#chat_state.tasks,    
                     { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
                 Val -> 
