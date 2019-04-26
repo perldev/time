@@ -215,7 +215,10 @@ route_search(Key, [{Prefix, Host}|Tail]) ->
     end
 .
 
- 
+
+process_params2headers({token, Value})->
+  {"token", Value}
+;
 process_params2headers({user_id, Value})->
   {"X-Forwarded-User", Value}
 .
