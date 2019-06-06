@@ -36,6 +36,7 @@
                ip,
                user_id, 
                tasks, 
+               token,
                sessionkey,
                sessionobj
         }

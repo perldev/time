@@ -6,7 +6,7 @@
 % Behaviour cowboy_http_handler
 -export([init/3, handle/2, terminate/3,load_user_session/1, django_session_key/1,
          hexstring/1, get_key_dict/3,get_usd_rate/1, get_user_state/2, 
-         get_user_state/3, get_state/1, get_time/1, json_encode/1, json_decode/1]).
+         get_user_state/3, get_state/1, get_time/1, json_encode/1, json_decode/1, dict_to_json/1]).
 
 % Behaviour cowboy_http_websocket_handler
 
@@ -163,6 +163,7 @@ process([<<"time">>], {session, SessionObj, SessionKey}, _Body, Req, NewState)->
                     {<<"x-cache">>, true},
                     {<<"status">>, true},
                     {<<"sessionid">>, SessionKeyCustom},
+                    {<<"ui_settings">>, get_key_dict(SessionObj, <<"ui_settings">>, []) },                    
                     {<<"user_custom_id">>, get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
                     {<<"use_f2a">>, get_key_dict(SessionObj, <<"use_f2a">>, false) },
                     {<<"deal_comission">>, get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
@@ -309,6 +310,45 @@ get_key_dict(SessionObj,Key, Default)->
 generate_key(Salt, Body)->
         hexstring( crypto:hash(sha256, <<Salt/binary, Body/binary >>)  ) 
 .
+
+% [
+%         {<<"logged">>, true},
+%         {<<"x-cache">>, true},
+%         {<<"status">>, true},
+%         {<<"sessionid">>, SessionKeyCustom},
+%         {<<"ui_settings">>, UiSettingsJ },
+%         {<<"ui_msg">>, erws_api:get_key_dict(SessionObj, <<"ui_msg">>, <<"">> ) },
+%         {<<"user_custom_id">>, erws_api:get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
+%         {<<"use_f2a">>, erws_api:get_key_dict(SessionObj, <<"use_f2a">>, false) },
+%         {<<"deal_comission">>, erws_api:get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
+%         ],	
+
+dict_to_json(Dict)->
+    dict_to_json(dict:to_list(Dict), [])
+.
+
+dict_to_json([], Accum)->
+     {Accum};
+dict_to_json([{Key, Val}| Tail], Accum)->
+    case checkdict(Val) of
+        true -> 
+            ValNormal =  {dict_to_json( dict:to_list(Val), []  )},
+            dict_to_json(Tail, [{Key, ValNormal}|Accum]);
+        false-> 
+            case Val of
+            {pickle_unicode, Val1} -> % do not save here not ASCII symbols
+                dict_to_json(Tail, [{Key, Val1}|Accum]);
+            Val1 -> % do not save here not ASCII symbols
+                dict_to_json(Tail, [{Key, Val1}|Accum])
+            end    
+    end.
+    
+checkdict(DictCand) when is_tuple(DictCand) andalso element(1, DictCand) =:= dict ->
+  true;
+checkdict(_NotDict) ->
+  false.
+
+
 
 json_decode(Json)->
         jiffy:decode(Json).

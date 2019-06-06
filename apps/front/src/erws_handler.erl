@@ -35,8 +35,10 @@ websocket_init(_Any, Req, []) ->
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
     ReqRes = cowboy_req:compact(Req_3),
+     {ok, ApiToken} = application:get_env(front, token),
+
     
-    {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, start=now(), ip=IP, tasks=[],
+    {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, token=ApiToken, start=now(), ip=IP, tasks=[],
                               sessionobj=SessionObj, sessionkey=CookieSession}, hibernate}.
 
 % Called when a text message arrives.
@@ -78,20 +80,22 @@ websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
                State#chat_state{tasks=lists:delete(Key, Tasks)} , hibernate};
                
-websocket_info({task_result, MyKey, _Body, _OtherOf200}, Req, State) ->
+websocket_info({task_result, MyKey, _Body, OtherOf200}, Req, State) ->
       %%% TODO rework 500 task
-      ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
+      ?CONSOLE_LOG("info: ~p ~n ~p result is  ~p ~n~n", [Req, State, OtherOf200]),
       ResTime = restime(State#chat_state.user_id, State),
       {Key, Params} = MyKey,
       ?CONSOLE_LOG("callback result of task  ~p for ~p ~n",[Key, State]),
       PreKey = case State#chat_state.user_id of
                    undefined -> Key;
-                   Value ->  BinUserId = list_to_binary( integer_to_list(Value)), lists:delete(BinUserId, Key)
+                   Value ->  BinUserId = list_to_binary( integer_to_list(Value)), 
+                             lists:delete(BinUserId, Key)
                end,                 
       FirstKey = revertkey(PreKey),
       ResBinary = <<"\"",FirstKey/binary, "\": false" >>,  
       Req2 = cowboy_req:compact(Req),
       Tasks =  State#chat_state.tasks,
+      
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
                State#chat_state{tasks=lists:delete(Key, Tasks)} , hibernate};
 websocket_info(_Info, Req, State) ->
@@ -157,12 +161,12 @@ start_delayed_task(Command,  UserId, State)->
     StringTokens =  my_tokens(Command),
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
-                  false -> my_tokens(StringTokens) ++ list_to_binary(integer_to_list(UserId))
+                  false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))]
             end,
     case api_table_holder:find_in_cache(Key) of
                 false-> 
                     ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                    api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }], self()),
+                    api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], self()),
                     Tasks = State#chat_state.tasks,    
                     { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
                 Val -> 
@@ -256,16 +260,24 @@ restime(UserId, State)->
     ?CONSOLE_LOG("session obj ~p ~n",[SessionObj]),
     ?CONSOLE_LOG("user id ~p~n", [UserIdBinary]), 
     SessionKeyCustom = list_to_binary(erws_api:hexstring(crypto:hash(sha256, <<?KEY_PREFIX, SessionKey/binary, UserIdBinary/binary>>))), 
+    UiSettingsJ = case erws_api:get_key_dict(SessionObj, <<"ui_settings">>, [] ) of
+                    [] ->  [];
+                    UiSettings -> erws_api:dict_to_json(UiSettings)
+                  end,
     ResTime = [
         {<<"logged">>, true},
         {<<"x-cache">>, true},
         {<<"status">>, true},
         {<<"sessionid">>, SessionKeyCustom},
+        {<<"ui_settings">>, UiSettingsJ },
+        {<<"ui_msg">>, erws_api:get_key_dict(SessionObj, <<"ui_msg">>, <<"">> ) },
         {<<"user_custom_id">>, erws_api:get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
         {<<"use_f2a">>, erws_api:get_key_dict(SessionObj, <<"use_f2a">>, false) },
         {<<"deal_comission">>, erws_api:get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
         ],		
     {pickle_unicode, UserName } = erws_api:get_key_dict(SessionObj, <<"username">>, {pickle_unicode, <<>>} ),
+    ?CONSOLE_LOG("time to user ~p ~n",[ResTime]),
+
     % move spawn
     mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "chat_", SessionKeyCustom/binary>>, pickle:term_to_pickle(UserName)),
     mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "user_", UserIdBinary/binary>>, pickle:term_to_pickle(SessionKey)),   
