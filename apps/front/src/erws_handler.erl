@@ -75,6 +75,7 @@ websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
                end,                 
       FirstKey = revertkey(PreKey),
       ResBinary = <<"\"",FirstKey/binary, "\":", Body/binary>>,  
+      ?CONSOLE_LOG("to client task  ~p ~n",[ResBinary]),
       Req2 = cowboy_req:compact(Req),
       Tasks =  State#chat_state.tasks,
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
@@ -155,7 +156,7 @@ start_delayed_task(Command,  undefined, State)->
                     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                     Tasks = State#chat_state.tasks,    
                     BinCommanKey = revertkey(Key),
-                    { << "{","\"",BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
+                    { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
     end;
 start_delayed_task(Command,  UserId, State)->
     StringTokens =  my_tokens(Command),
@@ -173,7 +174,7 @@ start_delayed_task(Command,  UserId, State)->
                     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                     Tasks = State#chat_state.tasks,
                     BinCommanKey = revertkey(Key),
-                    {  << "{", "\"" , BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
+                    {  << "{", "\"/" , Command/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
     end.
        
 
@@ -306,6 +307,3 @@ auth_user(CookieSession)->
               end      
       end     
 .
-      
-      
-      

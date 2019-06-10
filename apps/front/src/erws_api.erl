@@ -366,3 +366,4 @@ hexstring(<<X:256/big-unsigned-integer>>) ->
     lists:flatten(io_lib:format("~64.16.0b", [X]));
 hexstring(<<X:512/big-unsigned-integer>>) ->
     lists:flatten(io_lib:format("~128.16.0b", [X])).
+
