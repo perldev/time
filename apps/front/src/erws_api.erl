@@ -4,7 +4,7 @@
 
 
 % Behaviour cowboy_http_handler
--export([init/3, handle/2, terminate/3,load_user_session/1, django_session_key/1,
+-export([init/3, handle/2, terminate/3,load_user_session/1, django_session_key/1, django_read_token/1,
          hexstring/1, get_key_dict/3,get_usd_rate/1, get_user_state/2, 
          get_user_state/3, get_state/1, get_time/1, json_encode/1, json_decode/1, dict_to_json/1]).
 
@@ -220,6 +220,8 @@ auth_user(Req, Body, State)->
                 { {session, SessionObj, CookieSession}, Req5}
             end     
 .
+django_read_token(Session)->
+    <<?KEY_PREFIX, "read_token", Session/binary>>.
   
 django_session_key(Session)->
     <<?KEY_PREFIX, "django.contrib.sessions.cache", Session/binary>>.

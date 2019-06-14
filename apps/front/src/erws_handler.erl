@@ -30,7 +30,7 @@ terminate(_Req, _State) -> ok.
 websocket_init(_Any, Req, []) ->
     ?CONSOLE_LOG("~nNew client ~p", [Req]),
     { { IP, _Port }, Req_2 } = cowboy_req:peer(Req),
-    {CookieSession, Req_3} = cowboy_req:cookie(<<"sessionid">>, Req_2, undefined), 
+    {CookieSession, Req_3} = cowboy_req:qs_val(<<"token">>, Req_2, undefined), 
     {UserId, SessionObj} = auth_user( CookieSession ),
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
@@ -295,7 +295,7 @@ auth_user(CookieSession)->
        case CookieSession of 
           undefined -> {undefined, dict:new()};
           _ ->
-              SessionObj =  erws_api:load_user_session(erws_api:django_session_key(CookieSession)),
+              SessionObj =  erws_api:load_user_session(erws_api:django_read_token(CookieSession)),
               ?CONSOLE_LOG(" load session ~p ~n",[SessionObj]),
               case SessionObj of 
                 undefined -> {undefined, dict:new()};
