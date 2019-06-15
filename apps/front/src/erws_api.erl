@@ -326,11 +326,19 @@ generate_key(Salt, Body)->
 %         ],	
 
 dict_to_json(Dict)->
-    dict_to_json(dict:to_list(Dict), [])
+	 List = dict:to_list(Dict),
+    ?CONSOLE_LOG(" dict to list  ~p ~n",[List]), 
+    dict_to_json(List, [])
 .
 
 dict_to_json([], Accum)->
      {Accum};
+
+dict_to_json([{{pickle_unicode, Key}, Val}| Tail], Accum)->
+           dict_to_json([{Key, Val}| Tail], Accum)
+; 
+dict_to_json([{ Key, {pickle_unicode, Val}}| Tail], Accum)->
+           dict_to_json([{Key, Val}| Tail], Accum);
 dict_to_json([{Key, Val}| Tail], Accum)->
     case checkdict(Val) of
         true -> 
