@@ -35,11 +35,17 @@ websocket_init(_Any, Req, []) ->
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
     ReqRes = cowboy_req:compact(Req_3),
-     {ok, ApiToken} = application:get_env(front, token),
-
-    
-    {ok, ReqRes, #chat_state{ index = 0, user_id=UserId, token=ApiToken, start=now(), ip=IP, tasks=[],
-                              sessionobj=SessionObj, sessionkey=CookieSession}, hibernate}.
+    {ok, ApiToken} = application:get_env(front, token),
+    State = #chat_state{ index = 0, 
+                        user_id=UserId,
+                        token=ApiToken, 
+                        start=now(),
+                        ip=IP, tasks=[],
+                        sessionobj=SessionObj, 
+                        sessionkey=CookieSession,
+                        pid = self()},
+    ets:insert(?CONNS, State),
+    {ok, ReqRes, State, hibernate}.
 
 % Called when a text message arrives.
 websocket_handle({text, Msg}, Req, State =  #chat_state{index=Index}) ->
@@ -61,8 +67,13 @@ websocket_handle(Any, Req, State) ->
     {ok, Req, State}.
 
 % Other messages from the system are handled here.
-
-
+websocket_info({msg, Msg}, Req, State)->    
+       ?CONSOLE_LOG("simple message result from somebody ~p to ~p",[Msg, State]),
+       {reply, {text, Msg}, Req, hibernate}
+;
+websocket_info({deal_info, Msg}, Req, State)->
+       ?CONSOLE_LOG("callback result from somebody ~p to ~p",[Msg, State]),
+       {reply, {text, Msg}, Req, hibernate};
 websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
       ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
 
@@ -79,7 +90,6 @@ websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
       Tasks =  State#chat_state.tasks,
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
                State#chat_state{tasks=lists:delete(Key, Tasks)} , hibernate};
-               
 websocket_info({task_result, MyKey, _Body, OtherOf200}, Req, State) ->
       %%% TODO rework 500 task
       ?CONSOLE_LOG("info: ~p ~n ~p result is  ~p ~n~n", [Req, State, OtherOf200]),
@@ -101,6 +111,7 @@ websocket_info({task_result, MyKey, _Body, OtherOf200}, Req, State) ->
 websocket_info(_Info, Req, State) ->
     ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
     {ok, Req, State, hibernate}.
+    
 
 websocket_terminate(Reason, Req, State) ->
     ?CONSOLE_LOG("terminate: ~p ,~n ~p, ~n ~p~n~n",
@@ -123,6 +134,7 @@ wait_response()->
    
 wait_tasks_in_work(State)->
     SessionKey = State#chat_state.sessionkey,
+    
     lists:foldl(fun(Key, {List, TempState})-> 
                     ?CONSOLE_LOG(" check key from erws handler ~p ~n",[ Key ]),
                     case api_table_holder:find_in_cache(Key) of 
@@ -161,7 +173,7 @@ start_delayed_task(Command,  UserId, State)->
     StringTokens =  my_tokens(Command),
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
-                  false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))]
+                  false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))] %% adding userid to the path in order to unify this request in cache
             end,
     case api_table_holder:find_in_cache(Key) of
                 false-> 

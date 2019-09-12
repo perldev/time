@@ -18,8 +18,17 @@ init([]) ->
         Tid = ets:new(tasks, [set, protected, named_table, {heir,none},
                               {write_concurrency, false}, {read_concurrency,true}]),
         
+        ets:new(tasks_log, [duplicate_bag, protected, named_table, {heir,none},
+                            {write_concurrency, false}, {read_concurrency,true}]),
+        
+        
         TidCache = ets:new(waitcache, [set, protected, named_table, {heir,none},
                               {write_concurrency,false}, {read_concurrency,true}]),
+                              
+        ets:new(?CONNS, [duplicate_bag, protected, named_table, {heir,none},
+                              {write_concurrency,false}, {read_concurrency,true}, {keypos, 2}]),
+                              
+                              
                               
         {ok, Routes} = application:get_env(front, routes),
         {ok, #monitor{
@@ -247,7 +256,7 @@ start_asyn_task(KeyPath, Params, State)->
      run_http(KeyPath, HostUrl, Headers)
 .      
 
-    
+%%not work!!
 handle_cast({start_task_brutal, Key, Params }, MyState) ->
       MyKey = {Key, Params},
       {Pid, Mont} = start_asyn_task(Key, Params, MyState),
@@ -268,7 +277,7 @@ handle_cast({start_task, Key, Params, Key2}, MyState) ->
                 DictNew1 = dict:store(RequestId, MyKey, MyState#monitor.pids),
                 DictNew2 = dict:store(MyKey, RequestId, MyState#monitor.tasks),
                 % duplicate info to ets table
-                ets:insert(tasks, {MyKey, RequestId}),
+                ets:insert(tasks, {MyKey, RequestId, erlang:timestamp(), undefined}),
                 subscribe_on_cache(MyKey, Key2),                
                 {noreply, MyState#monitor{tasks=DictNew2, pids=DictNew1 } } 
    end;
@@ -282,7 +291,7 @@ handle_cast({start_task, Key, Params}, MyState) ->
                 {ok, RequestId} = start_asyn_task(Key, Params, MyState),
                 DictNew1 = dict:store(RequestId, MyKey, MyState#monitor.pids),
                 DictNew2 = dict:store(MyKey , RequestId, MyState#monitor.tasks),
-                ets:insert(tasks, { MyKey, RequestId}),
+                ets:insert(tasks, { MyKey, RequestId,  erlang:timestamp(), undefined}),
                 {noreply, MyState#monitor{tasks=DictNew2, pids=DictNew1 } } 
    end;
 handle_cast( archive_mysql_start, MyState) ->
@@ -318,7 +327,15 @@ handle_info({http, {ReqestId, Result}}, State )->
           {ok, Key}->
               DictNew1 = dict:erase(ReqestId, State#monitor.pids),
               DictNew2 = dict:erase(Key, State#monitor.tasks),
-              ets:delete(tasks, Key),
+              case  ets:lookup(tasks, Key) of
+                [ElemOfTask] ->
+                        {MyKey, RequestId, StartTime, undefined} = ElemOfTask,
+                        ets:delete(tasks, Key),
+                        EndTime = erlang:timestamp(), 
+                        ets:insert(tasks_log, {MyKey, RequestId, StartTime, timer:now_diff(EndTime, StartTime) });
+                [] ->
+                    ?CONSOLE_LOG("something wrong with state for this request ~p ~p ~n", [ReqestId, Key])
+              end, 
               NewState = State#monitor{pids=DictNew1, tasks=DictNew2}, 
               case ets:lookup(waitcache, Key ) of %%check wait list
                  [{Key, WaitList}] ->

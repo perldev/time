@@ -66,7 +66,11 @@ false_response(Req, State)->
  
 wait_response(Req, State)->
    {raw_answer, {502, <<"{\"status\":\"wait\",\"timeout\":1000}">>, headers_json_plain() },  Req, State}.
- 
+   
+true_response(Req, State)->
+   {raw_answer, {200, <<"{\"status\":\"true\"}">>, headers_json_plain() },  Req, State}.
+
+   
  
 -spec check_sign(tuple(), binary(), list())-> true|false. 
 check_sign({undefined, undefined}, Body, State)->
@@ -84,35 +88,56 @@ check_sign({Sign, LocalKey}, Body, State)->
 
 process_delayed_task(Key, Req, State)->
     
- case api_table_holder:check_task_in_work(Key)  of 
-     false-> 
-               case api_table_holder:find_in_cache(Key) of
-                  false-> 
+    case api_table_holder:check_task_in_work(Key)  of 
+        false-> 
+                case api_table_holder:find_in_cache(Key) of
+                    false-> 
 
-                           ?CONSOLE_LOG("start task ~p ~n",[ Key]),
-                           api_table_holder:start_task(Key), 
-                           wait_response(Req, State); 
-                  Val -> 
-            
-                       ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
-                       {raw_answer, {200, Val, headers_json_plain() },  Req, State}   
-               end;
-     _ ->
-           ?CONSOLE_LOG(" we have found  task in work ~p ~n",[ Key ]),
-           wait_response(Req, State)
- end
+                            ?CONSOLE_LOG("start task ~p ~n",[ Key]),
+                            api_table_holder:start_task(Key), 
+                            wait_response(Req, State); 
+                    Val -> 
+                
+                        ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+                        {raw_answer, {200, Val, headers_json_plain() },  Req, State}   
+                end;
+        _ ->
+            ?CONSOLE_LOG(" we have found  task in work ~p ~n",[ Key ]),
+            wait_response(Req, State)
+    end
 
 .
 
-process([<<"tasks">>, <<"restartall">> ,<<"mysecretkey2">>], _, _Body, Req, State)->
-    TasksState = api_table_holder:restartall(),
-    Tasks = dict:to_list(TasksState#monitor.tasks),
-    ResTime = lists:map(fun({Elem, Val})-> { erws_handler:revertkey(Elem), list_to_binary(lists:flatten(io_lib:format("~p", [Val]))) } end, Tasks),
-    {json, {ResTime}, Req, State};
+
+process([<<"msg">>, UserId], _, Body, Req, State )->
+    case ets:lookup(?CONNS, UserId) of
+        [] -> false_response(Req, State);
+        List ->
+                lists:foreach(fun(ChatState)->
+                     ChatState#chat_state.pid ! {msg, Body}
+                    end, List ),
+                true_response(Req, State)
+     end
+;
+process([<<"callback">>, UserId], _, Body, Req, State )->
+    case ets:lookup(?CONNS, UserId) of
+        [] -> false_response(Req, State);
+        List ->
+                lists:foreach(fun(ChatState)->
+                     ChatState#chat_state.pid ! {deal_info, Body}
+                    end, List ),
+                true_response(Req, State)
+     end
+;
 process([<<"tasks">>, <<"mysecretkey2">>], _, _Body, Req, State)->
     TasksState = api_table_holder:status(),
     Tasks = dict:to_list(TasksState#monitor.tasks),
-    ResTime = lists:map(fun({Elem, Val})-> { erws_handler:revertkey(Elem), list_to_binary(lists:flatten(io_lib:format("~p", [Val]))) } end, Tasks),
+%     {[<<"api">>,<<"balance">>,<<"41882">>],[{user_id,"41882"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]}
+    
+    ResTime = lists:map(fun({Value, Ref})-> {Elem, Val} = Value ,
+                                { erws_handler:revertkey(Elem), list_to_binary(lists:flatten(io_lib:format("~p", [Val]))) }
+                        
+                        end, Tasks),
     {json, {ResTime}, Req, State};    
 process(Key = [<<"start">>, <<"api">>| Tail], _User, _Body, Req, State)->
     ?CONSOLE_LOG(" cold start ~p ~n",[ Key]),

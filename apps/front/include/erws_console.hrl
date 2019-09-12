@@ -20,7 +20,9 @@
 -define(HOST,"http://127.0.0.1:8098").
 -define(RANDOM_CHOICE, 10).
 -define(SESSIONS, ets_sessions).
+-define(CONNS, connections).
 -define(MYSQL_POOL, mysql_pool).
+
 -define(DEFAULT_FLUSH_SIZE, 1000).
 -define(MESSAGES, ets_sessions_holder).
 -define(UNDEF, undefined).
@@ -31,12 +33,13 @@
 
 -record(
         chat_state,{
+               user_id, 
                start,
                index = 0,
                ip,
-               user_id, 
                tasks, 
                token,
+               pid,
                sessionkey,
                sessionobj
         }
