@@ -15,17 +15,17 @@ start_link() ->
           gen_server:start_link({local, ?MODULE},?MODULE, [],[]).
 
 init([]) ->
-        Tid = ets:new(tasks, [set, protected, named_table, {heir,none},
+        Tid = ets:new(tasks, [set, public, named_table, {heir,none},
                               {write_concurrency, false}, {read_concurrency,true}]),
         
-        ets:new(tasks_log, [duplicate_bag, protected, named_table, {heir,none},
+        ets:new(tasks_log, [duplicate_bag, public, named_table, {heir,none},
                             {write_concurrency, false}, {read_concurrency,true}]),
         
         
-        TidCache = ets:new(waitcache, [set, protected, named_table, {heir,none},
+        TidCache = ets:new(waitcache, [set, public, named_table, {heir,none},
                               {write_concurrency,false}, {read_concurrency,true}]),
                               
-        ets:new(?CONNS, [duplicate_bag, protected, named_table, {heir,none},
+        ets:new(?CONNS, [duplicate_bag, public, named_table, {heir,none},
                               {write_concurrency,false}, {read_concurrency,true}, {keypos, 2}]),
                               
                               
