@@ -305,7 +305,9 @@ restime(UserId, State)->
 auth_user(CookieSession)->
        ?CONSOLE_LOG(" auth for session  ~p ~n",[ CookieSession]),
        case CookieSession of 
-          undefined -> {undefined, dict:new()};
+          undefined ->
+                ?CONSOLE_LOG(" nothing found for auth for session  ~p ~n",[ CookieSession]),
+                {undefined, dict:new()};
           _ ->
               SessionObj =  erws_api:load_user_session(erws_api:django_read_token(CookieSession)),
               ?CONSOLE_LOG(" load session ~p ~n",[SessionObj]),
