@@ -30,7 +30,7 @@ terminate(_Req, _State) -> ok.
 websocket_init(_Any, Req, []) ->
     ?CONSOLE_LOG("~nNew client ~p", [Req]),
     { { IP, _Port }, Req_2 } = cowboy_req:peer(Req),
-    {CookieSession, Req_3} = cowboy_req:cookie(<<"sessionid">>, Req_2, undefined), 
+    {CookieSession, Req_3} = cowboy_req:qs_val(<<"token">>, Req_2, undefined), 
     {UserId, SessionObj} = auth_user( CookieSession ),
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
@@ -86,6 +86,7 @@ websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
                end,                 
       FirstKey = revertkey(PreKey),
       ResBinary = <<"\"",FirstKey/binary, "\":", Body/binary>>,  
+      ?CONSOLE_LOG("to client task  ~p ~n",[ResBinary]),
       Req2 = cowboy_req:compact(Req),
       Tasks =  State#chat_state.tasks,
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
@@ -167,7 +168,7 @@ start_delayed_task(Command,  undefined, State)->
                     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                     Tasks = State#chat_state.tasks,    
                     BinCommanKey = revertkey(Key),
-                    { << "{","\"",BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
+                    { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
     end;
 start_delayed_task(Command,  UserId, State)->
     StringTokens =  my_tokens(Command),
@@ -185,7 +186,7 @@ start_delayed_task(Command,  UserId, State)->
                     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                     Tasks = State#chat_state.tasks,
                     BinCommanKey = revertkey(Key),
-                    {  << "{", "\"" , BinCommanKey/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
+                    {  << "{", "\"/" , Command/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
     end.
        
 
@@ -306,7 +307,7 @@ auth_user(CookieSession)->
        case CookieSession of 
           undefined -> {undefined, dict:new()};
           _ ->
-              SessionObj =  erws_api:load_user_session(erws_api:django_session_key(CookieSession)),
+              SessionObj =  erws_api:load_user_session(erws_api:django_read_token(CookieSession)),
               ?CONSOLE_LOG(" load session ~p ~n",[SessionObj]),
               case SessionObj of 
                 undefined -> {undefined, dict:new()};
@@ -318,6 +319,3 @@ auth_user(CookieSession)->
               end      
       end     
 .
-      
-      
-      
