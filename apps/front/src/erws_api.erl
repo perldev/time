@@ -220,7 +220,7 @@ process([<<"tasks_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
                 Result = lists:map(fun({ {Key, _PrivateParams }, _Ref, _StartTime, WorkingTime  })->
                                             {erws_handler:revertkey(Key), WorkingTime}
                                     end, List ),
-                 {json, {Result}, Req, State};
+                 {json, {Result}, Req, State}
      end
 ;
 process([<<"msg">>, UserId], _, Body, Req, State )->
