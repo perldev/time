@@ -108,7 +108,121 @@ process_delayed_task(Key, Req, State)->
 
 .
 
+% {{[<<"api">>,<<"trades">>,<<"buy">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564609.225942>,
+%   {1568,637026,987953},
+%   2468},
+%  {{[<<"api">>,<<"trades">>,<<"buy">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564609.227195>,
+%   {1568,637509,873470},
+%   4568},
+%  {{[<<"api">>,<<"trades">>,<<"buy">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564609.227361>,
+%   {1568,637523,849220},
+%   6786},
+%  {{[<<"api">>,<<"trades">>,<<"buy">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564609.228396>,
+%   {1568,637922,865125},
+%   18420},
+%  {{[<<"api">>,<<"japan_stat">>,<<"high">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.225666>,
+%   {1568,637026,808663},
+%   20906},
+%  {{[<<"api">>,<<"deals">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.226421>,
+%   {1568,637509,846255},
+%   61307},
+%  {{[<<"api">>,<<"deals">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564609.228357>,
+%   {1568,637922,840176},
+%   36805},
+%  {{[<<"api">>,<<"trades">>,<<"sell">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564609.225907>,
+%   {1568,637026,972806},
+%   10121},
+%  {{[<<"api">>,<<"trades">>,<<"sell">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.226461>,
+%   {1568,637509,866546},
+%   9888},
+%  {{[<<"api">>,<<"trades">>,<<"sell">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.226585>,
+%   {1568,637523,848597},
+%   2172},
+%  {{[<<"api">>,<<"trades">>,<<"sell">>,<<"btc_uah">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564609.228380>,
+%   {1568,637922,862782},
+%   9758},
+%  {{[<<"api">>,<<"my_orders">>,<<"btc_uah">>,<<"4">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564609.225889>,
+%   {1568,637026,970346},
+%   4433},
+%  {{[<<"api">>,<<"my_orders">>,<<"btc_uah">>,<<"4">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.226438>,
+%   {1568,637509,859363},
+%   9836},
+%  {{[<<"api">>,<<"my_orders">>,<<"btc_uah">>,<<"4">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.226566>,
+%   {1568,637523,837820},
+%   3169},
+%  {{[<<"api">>,<<"my_orders">>,<<"btc_uah">>,<<"4">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.227092>,
+%   {1568,637922,848613},
+%   14277},
+%  {{[<<"api">>,<<"balance">>,<<"4">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.225707>,
+%   {1568,637026,968847},
+%   19542},
+%  {{[<<"api">>,<<"balance">>,<<"4">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.226427>,
+%   {1568,637509,847242},
+%   45968},
+%  {{[<<"api">>,<<"balance">>,<<"4">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564609.227300>,
+%   {1568,637523,835323},
+%   23831},
+%  {{[<<"api">>,<<"balance">>,<<"4">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.227084>,
+%   {1568,637922,845854},
+%   49911},
+%  {{[<<"api">>,<<"market_prices">>],
+%    [{user_id,"4"},{token,"sldkfj_4tjnaknsh_Agacvj3m6e=ico6x"}]},
+%   #Ref<0.3998443537.3514564610.225816>,
+%   {1568,637027,856641},
+%   100346}]
 
+
+process([<<"clear">>, <<"task_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
+    ets:delete_all_objects(tasks_log),
+    true_response(Req, State)
+;
+process([<<"tasks_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
+    case ets:tabl2list(tasks_log) of
+        List ->
+                Result = lists:map(fun({ {Key, _PrivateParams }, _Ref, _StartTime, WorkingTime  })->
+                                            {erws_handler:revertkey(Key), WorkingTime}
+                                    end, List ),
+                 {json, {Result}, Req, State};
+     end
+;
 process([<<"msg">>, UserId], _, Body, Req, State )->
     case ets:lookup(?CONNS, UserId) of
         [] -> false_response(Req, State);
@@ -126,7 +240,6 @@ process([<<"callback">>, UserId], _, Body, Req, State )->
                 lists:foreach(fun(ChatState)->
                      ChatState#chat_state.pid ! {deal_info, Body}
                     end, List ),
-                true_response(Req, State)
      end
 ;
 process([<<"tasks">>, <<"mysecretkey2">>], _, _Body, Req, State)->
