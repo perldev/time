@@ -229,7 +229,8 @@ process([<<"tasks">>, <<"mysecretkey2">>], _, Body, Req, State )->
                 Result = lists:map(fun({ {Key, _PrivateParams }, _Ref, StartTime, _WorkingTime  })->
                                                 {erws_handler:revertkey(Key), list_to_binary(to_localtime(StartTime)) }
                                     end, List),
-                 {json, {Result}, Req, State}
+                 JResult = [{<<"now">>,  list_to_binary(to_localtime(erlang:timestamp())) } |Result],
+                 {json, {JResult}, Req, State}
      end
 ;
 process([<<"connections">>, <<"mysecretkey2">>], _, Body, Req, State )->
