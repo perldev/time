@@ -224,24 +224,15 @@ process([<<"tasks_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
      end
 ;
 process([<<"connections">>, <<"mysecretkey2">>], _, Body, Req, State )->
-% State = #chat_state{ index = 0, 
-%                         user_id=UserId,
-%                         token=ApiToken, 
-%                         start=now(),
-%                         ip=IP, tasks=[],
-%                         sessionobj=SessionObj, 
-%                         sessionkey=CookieSession,
-%                         pid = self()},
     case ets:tab2list(?CONNS) of
         List ->
-                Result = lists:map(fun({_Name, UserId , _Token, _Start, IP, Tasks, SessObj, SesKey, PidSocket})->
-                                            [{<<"user_id">>, erws_api:get_key_dict(SessObj, <<"user_id">>, <<>>) }, 
-                                             {<<"username">>, erws_api:get_key_dict(SessObj, <<"username">>, <<>>) }, 
+        
+                Result = lists:map(fun( #chat_state{user_id=UserId , ip=IP, tasks=Tasks,  sessionobj=SessObj} )->
+                                            [{<<"user_id">>, UserId }, 
+                                             {<<"username">>, get_key_dict(SessObj, <<"username">>, <<>>) }, 
                                              {<<"ip">>, IP}, 
                                              {<<"tasks">>, Tasks},
-                                             {<<"ip_login">>, erws_api:get_key_dict(SessObj, <<"ip_login">>, <<>>) }
-                                             
-                                             ]
+                                             {<<"ip_login">>, get_key_dict(SessObj, <<"ip_login">>, <<>>) }]
                                             
                                     end, List ),
                  {json, {Result}, Req, State}

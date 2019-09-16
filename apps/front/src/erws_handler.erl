@@ -30,6 +30,7 @@ terminate(_Req, _State) -> ok.
 websocket_init(_Any, Req, []) ->
     ?CONSOLE_LOG("~nNew client ~p", [Req]),
     {IP, Req_2 } = cowboy_req:header(<<"x-real-ip">>, Req, undefined),
+
     {CookieSession, Req_3} = cowboy_req:qs_val(<<"token">>, Req_2, undefined), 
     {UserId, SessionObj} = auth_user( CookieSession ),
     %TODO make key from server
