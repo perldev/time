@@ -64,7 +64,7 @@ websocket_handle({text, Msg}, Req, State=#chat_state{index=Index}) ->
                 [{?MODULE, ?LINE}, {NewState, Res}]),
     case Res of
         ok  -> {ok, Req2, NewState};
-        Res -> {reply, {text, Res}, Req2, NewState};
+        Res -> {reply, {text, Res}, Req2, NewState}
     end;
 % With this callback we can handle other kind of
 % messages, like binary.
