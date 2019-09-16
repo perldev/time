@@ -48,7 +48,7 @@ start(_StartType, _StartArgs) ->
     Dispatch = routes(),
     ok = case cowboy:start_http(
                 listener, 6000,
-                [{port, 4000}],
+                [{port, ?PORT}],
             [{env, [{dispatch, Dispatch}]}]) of
              {ok, _} -> ok;
              {error, {already_started, _}} -> ok;

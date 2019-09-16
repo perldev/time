@@ -19,6 +19,7 @@
 
 -define(INIT_APPLY_TIMEOUT,1000).
 -define(HOST,"http://127.0.0.1:8098").
+-define(POST, 8093).
 -define(RANDOM_CHOICE, 10).
 -define(SESSIONS, ets_sessions).
 -define(CONNS, connections).
@@ -31,6 +32,7 @@
 -define(SESSION_SALT, <<"tesC_aasa_salts">> ).
 -define(KEY_PREFIX, "crypton" ).
 -define(LOCAL_CACHE, myMcd).
+
 
 -record(
         chat_state,{
