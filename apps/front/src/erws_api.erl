@@ -535,7 +535,7 @@ checkdict(_NotDict) ->
 
 
 to_integer(Bin) when is_binary(Bin)->
-    binary_to_list(list_to_integer(Bin))
+    list_to_integer(binary_to_list(Bin))
 ;
 to_integer(Bin) when is_list(Bin)->
     list_to_integer(Bin)
