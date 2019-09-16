@@ -210,7 +210,7 @@ process_delayed_task(Key, Req, State)->
 %   100346}]
 
 
-process([<<"clear">>, <<"task_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
+process([<<"clear">>, <<"tasks_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
     ets:delete_all_objects(tasks_log),
     true_response(Req, State)
 ;
