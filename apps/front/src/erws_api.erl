@@ -233,6 +233,8 @@ process([<<"tasks">>, <<"mysecretkey2">>], _, Body, Req, State )->
      end
 ;
 process([<<"connections">>, <<"mysecretkey2">>], _, Body, Req, State )->
+
+
     case ets:tab2list(?CONNS) of
         List ->
         
@@ -253,9 +255,11 @@ process([<<"connections">>, <<"mysecretkey2">>], _, Body, Req, State )->
 ;
 
 process([<<"msg">>, UserId], _, Body, Req, State )->
+    User = to_integer(UserId),
+    ?CONSOLE_LOG(" process msg to  ~p ~n",[ User ]),
 
    
-    case ets:lookup(?CONNS, to_integer(UserId)) of
+    case ets:lookup(?CONNS, User) of
         [] -> false_response(Req, State);
         List ->
                 lists:foreach(fun(ChatState)->
@@ -265,7 +269,9 @@ process([<<"msg">>, UserId], _, Body, Req, State )->
      end
 ;
 process([<<"callback">>, UserId], _, Body, Req, State )->
-    case ets:lookup(?CONNS, UserId) of
+    User = to_integer(UserId),
+    ?CONSOLE_LOG(" process callback to  ~p ~n",[ User ]),
+    case ets:lookup(?CONNS, User) of
         [] -> false_response(Req, State);
         List ->
                 lists:foreach(fun(ChatState)->
