@@ -367,7 +367,7 @@ handle_info({http, {ReqestId, Result}}, State )->
               ets:delete(waitcache, Key),
              {noreply,  NewState};
           error ->   
-             ?CONSOLE_LOG("something wrong with state for this reqest ~p ~p ~n", [ReqestId, Body]),
+             ?CONSOLE_LOG("something wrong with state for this reqest ~p ~p ~n", [ReqestId, Result]),
              {noreply,  State}
      end,
     {noreply,  State}
