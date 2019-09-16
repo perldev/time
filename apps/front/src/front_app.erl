@@ -4,6 +4,7 @@
 %%%-------------------------------------------------------------------
 
 -module(front_app).
+-include("erws_console.hrl").
 
 -behaviour(application).
 
