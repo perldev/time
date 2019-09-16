@@ -533,7 +533,7 @@ to_integer(Bin) when is_binary(Bin)->
 ;
 to_integer(Bin) when is_list(Bin)->
     list_to_integer(Bin)
-;
+.
 
 json_decode(Json)->
         jiffy:decode(Json).
