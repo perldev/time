@@ -228,8 +228,12 @@ process([<<"connections">>, <<"mysecretkey2">>], _, Body, Req, State )->
         List ->
         
                 Result = lists:map(fun( #chat_state{user_id=UserId , ip=IP, tasks=Tasks,  sessionobj=SessObj} )->
+                                            Username =  case  get_key_dict(SessObj, <<"username">>, <<>>) of
+                                                            {pickle_unicode, UserName }  -> UserName;
+                                                            UserName->  UserName 
+                                                        end,
                                             [{<<"user_id">>, UserId }, 
-                                             {<<"username">>, get_key_dict(SessObj, <<"username">>, <<>>) }, 
+                                             {<<"username">>, Username }, 
                                              {<<"ip">>, IP}, 
                                              {<<"tasks">>, Tasks},
                                              {<<"ip_login">>, get_key_dict(SessObj, <<"ip_login">>, <<>>) }]
