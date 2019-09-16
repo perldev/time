@@ -255,7 +255,7 @@ process([<<"connections">>, <<"mysecretkey2">>], _, Body, Req, State )->
 process([<<"msg">>, UserId], _, Body, Req, State )->
 
    
-    case ets:lookup(?CONNS, to_integer(UserId) of
+    case ets:lookup(?CONNS, to_integer(UserId)) of
         [] -> false_response(Req, State);
         List ->
                 lists:foreach(fun(ChatState)->
