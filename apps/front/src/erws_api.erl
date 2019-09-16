@@ -239,7 +239,7 @@ process([<<"callback">>, UserId], _, Body, Req, State )->
         List ->
                 lists:foreach(fun(ChatState)->
                      ChatState#chat_state.pid ! {deal_info, Body}
-                    end, List ),
+                    end, List )
      end
 ;
 process([<<"tasks">>, <<"mysecretkey2">>], _, _Body, Req, State)->
