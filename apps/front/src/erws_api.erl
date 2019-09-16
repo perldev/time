@@ -232,14 +232,14 @@ process([<<"connections">>, <<"mysecretkey2">>], _, Body, Req, State )->
                                                             {pickle_unicode, UserName }  -> UserName;
                                                             UserName->  UserName 
                                                         end,
-                                            [{<<"user_id">>, UserId }, 
+                                            {[{<<"user_id">>, UserId }, 
                                              {<<"username">>, Username }, 
-                                             {<<"ip">>, IP}, 
+                                             {<<"ip">>, IP},
                                              {<<"tasks">>, Tasks},
-                                             {<<"ip_login">>, get_key_dict(SessObj, <<"ip_login">>, <<>>) }]
+                                             {<<"ip_login">>, get_key_dict(SessObj, <<"ip_login">>, <<>>) }]}
                                             
                                     end, List ),
-                 {json, {Result}, Req, State}
+                 {json, Result, Req, State}
      end
 ;
 
