@@ -62,8 +62,10 @@ websocket_handle({text, Msg}, Req, State=#chat_state{index=Index}) ->
     Req2 = cowboy_req:compact(Req),
     ?CONSOLE_LOG("~p send back: ~p ~n",
                 [{?MODULE, ?LINE}, {NewState, Res}]),
-
-    {reply, {text, Res}, Req2, NewState};
+    case Res of
+        ok  -> {ok, Req2, NewState};
+        Res -> {reply, {text, Res}, Req2, NewState};
+    end;
 % With this callback we can handle other kind of
 % messages, like binary.
 websocket_handle(Any, Req, State) ->
@@ -169,7 +171,7 @@ start_delayed_task(Command,  undefined, State)->
                     ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
                     api_table_holder:start_task(Key, [], self()),
                     Tasks = State#chat_state.tasks,    
-                    { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
+                    { ok, State#chat_state{tasks=[Key|Tasks] } };
                 Val -> 
                     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                     Tasks = State#chat_state.tasks,    
@@ -187,7 +189,7 @@ start_delayed_task(Command,  UserId, State)->
                     ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
                     api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], self()),
                     Tasks = State#chat_state.tasks,    
-                    { wait_response(), State#chat_state{tasks=[Key|Tasks] } };
+                    { ok, State#chat_state{tasks=[Key|Tasks] } };
                 Val -> 
                     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
                     Tasks = State#chat_state.tasks,
@@ -244,9 +246,13 @@ process({[{<<"get">>, Var}]}, UserId, State)->
     ?CONSOLE_LOG(" get task for ~p ~p ~n",[ Var, UserId ]),
 
     {Result, NewState} =  start_delayed_task(Var, UserId, State),
-    ResTime = restime(UserId, State),
-    
-    {<< "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">>, NewState}
+    case Result of 
+       ok -> {Result, NewState};
+       _ ->  
+        ResTime = restime(UserId, State),
+        { << "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">> , NewState}
+    end 
+  
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->
       ResTime = restime(undefined, State),
