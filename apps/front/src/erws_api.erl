@@ -226,9 +226,9 @@ process([<<"tasks_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
 process([<<"tasks">>, <<"mysecretkey2">>], _, Body, Req, State )->
     case ets:tab2list(tasks) of
         List ->
-                Result = lists:map(fun({ {Key, _PrivateParams }, _Ref, _StartTime, _WorkingTime  })->
-                                            {erws_handler:revertkey(Key),  }
-                                    end, List ),
+                Result = lists:map(fun({ {Key, _PrivateParams }, _Ref, StartTime, _WorkingTime  })->
+                                                {erws_handler:revertkey(Key), list_to_binary(to_localtime(StartTime)) }
+                                    end, List),
                  {json, {Result}, Req, State}
      end
 ;
@@ -541,6 +541,10 @@ json_decode(Json)->
 json_encode(Doc)->
         jiffy:encode(Doc).
 
+to_localtime(T)->
+    {{Year, Month, Day}, {Hour, Minute, Second}} = calendar:now_to_datetime(T),
+    StrTime = lists:flatten(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w",[Year,Month,Day,Hour,Minute,Second])),
+    StrTime.
 
 -spec hexstring( binary() ) -> list().
 hexstring(<<X:128/big-unsigned-integer>>) ->
