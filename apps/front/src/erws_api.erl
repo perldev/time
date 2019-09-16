@@ -215,7 +215,7 @@ process([<<"clear">>, <<"task_log">>, <<"mysecretkey2">>], _, Body, Req, State )
     true_response(Req, State)
 ;
 process([<<"tasks_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
-    case ets:tabl2list(tasks_log) of
+    case ets:tab2list(tasks_log) of
         List ->
                 Result = lists:map(fun({ {Key, _PrivateParams }, _Ref, _StartTime, WorkingTime  })->
                                             {erws_handler:revertkey(Key), WorkingTime}
