@@ -319,10 +319,8 @@ handle_cast( archive_mysql_start, MyState) ->
     {noreply, MyState}.
     
 
-handle_info({http, {ReqestId, Result}}, State )->
-    { {HttpVer, Status, _HTTP}, _Headers, Body}  = Result,
-    ?CONSOLE_LOG("get child process ~p ~p ~n", [ReqestId, Result]),
-      
+handle_info({http, {ReqestId,  { {HttpVer, Status, _HTTP}, _Headers, Body} } }, State )->
+    ?CONSOLE_LOG("get child process ~p ~p ~n", [ReqestId,  { {HttpVer, Status, _HTTP}, _Headers, Body} ]),
      case  dict:find(ReqestId, State#monitor.pids) of 
           {ok, Key}->
               DictNew1 = dict:erase(ReqestId, State#monitor.pids),
@@ -350,6 +348,30 @@ handle_info({http, {ReqestId, Result}}, State )->
              {noreply,  State}
      end
 ;
+handle_info({http, {ReqestId, Result}}, State )->
+    ?CONSOLE_LOG("get child unexpected ~p ~p ~n", [ReqestId, Result]),
+    case  dict:find(ReqestId, State#monitor.pids) of 
+          {ok, Key}->
+              DictNew1 = dict:erase(ReqestId, State#monitor.pids),
+              DictNew2 = dict:erase(Key, State#monitor.tasks),
+              case  ets:lookup(tasks, Key) of
+                [ElemOfTask] ->
+                        {MyKey, RequestId, StartTime, undefined} = ElemOfTask,
+                        ets:delete(tasks, Key),
+                        EndTime = erlang:timestamp(), 
+                        ets:insert(tasks_log, {MyKey, RequestId, StartTime, failed });
+                [] ->
+                    ?CONSOLE_LOG("something wrong with state for this request ~p ~p ~n", [ReqestId, Key])
+              end, 
+              NewState = State#monitor{pids=DictNew1, tasks=DictNew2}, 
+              ets:delete(waitcache, Key),
+             {noreply,  NewState};
+          error ->   
+             ?CONSOLE_LOG("something wrong with state for this reqest ~p ~p ~n", [ReqestId, Body]),
+             {noreply,  State}
+     end,
+    {noreply,  State}
+;    
 handle_info({'DOWN', Ref, process, Pid, Exit},  State)->
     ?LOG_DEBUG("kill child process ~p ~p ~n", [Pid, Exit]),
      case  dict:find(Pid, State#monitor.pids) of 
