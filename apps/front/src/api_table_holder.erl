@@ -25,7 +25,7 @@ init([]) ->
         TidCache = ets:new(waitcache, [set, public, named_table, {heir,none},
                               {write_concurrency,false}, {read_concurrency,true}]),
                               
-        ets:new(?CONNS, [duplicate_bag, public, named_table, {heir,none},
+        ets:new(?CONNS, [set, public, named_table, {heir,none},
                               {write_concurrency,false}, {read_concurrency,true}, {keypos, 2}]),
                               
                               

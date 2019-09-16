@@ -223,6 +223,15 @@ process([<<"tasks_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
                  {json, {Result}, Req, State}
      end
 ;
+process([<<"tasks">>, <<"mysecretkey2">>], _, Body, Req, State )->
+    case ets:tab2list(tasks) of
+        List ->
+                Result = lists:map(fun({ {Key, _PrivateParams }, _Ref, _StartTime, _WorkingTime  })->
+                                            {erws_handler:revertkey(Key),  }
+                                    end, List ),
+                 {json, {Result}, Req, State}
+     end
+;
 process([<<"connections">>, <<"mysecretkey2">>], _, Body, Req, State )->
     case ets:tab2list(?CONNS) of
         List ->

@@ -24,7 +24,9 @@ init({tcp, http}, _Req, _Opts) ->
     % we're not interested in serving any other content.
     {upgrade, protocol, cowboy_websocket}.
 
-terminate(_Req, _State) -> ok.
+terminate(_Req, State) -> 
+                CONSOLE_LOG("termination of socket: ~p ,~n",
+                [State]).
 
 % Called for every new websocket connection.
 websocket_init(_Any, Req, []) ->
