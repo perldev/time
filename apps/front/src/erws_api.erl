@@ -253,7 +253,9 @@ process([<<"connections">>, <<"mysecretkey2">>], _, Body, Req, State )->
 ;
 
 process([<<"msg">>, UserId], _, Body, Req, State )->
-    case ets:lookup(?CONNS, UserId) of
+
+   
+    case ets:lookup(?CONNS, to_integer(UserId) of
         [] -> false_response(Req, State);
         List ->
                 lists:foreach(fun(ChatState)->
@@ -526,6 +528,12 @@ checkdict(_NotDict) ->
   false.
 
 
+to_integer(Bin) when is_binary(Bin)->
+    binary_to_list(list_to_integer(Bin))
+;
+to_integer(Bin) when is_list(Bin)->
+    list_to_integer(Bin)
+;
 
 json_decode(Json)->
         jiffy:decode(Json).

@@ -73,7 +73,8 @@ websocket_handle(Any, Req, State) ->
 % Other messages from the system are handled here.
 websocket_info({msg, Msg}, Req, State)->    
        ?CONSOLE_LOG("simple message result from somebody ~p to ~p",[Msg, State]),
-       {reply, {text, Msg}, Req, hibernate}
+        ResTime = restime(State#chat_state.user_id, State, Msg),
+       {reply, {text, ResTime}, Req, hibernate}
 ;
 websocket_info({deal_info, Msg}, Req, State)->
        ?CONSOLE_LOG("callback result from somebody ~p to ~p",[Msg, State]),
@@ -257,10 +258,16 @@ process( ReqJson = {[{<<"ping">>, true}]}, UserId, State)->
     looking4finshed(ResTime, UserId, State)
 .
 
-restime(undefined, State)->
+
+restime(UserId, State)->
+    restime(UserId, State, <<>>)
+.
+
+restime(undefined, State, UiMsg)->
       ResTime = [{<<"deal_comission">>, <<"0.1">>},
                {<<"use_f2a">>, false},
                {<<"logged">>, false},
+               {<<"ui_msg">>, UiMsg},
                {<<"x-cache">>, true},
                {<<"status">>, true}
               ],
@@ -270,7 +277,7 @@ restime(undefined, State)->
       ResTime3 = erws_api:get_state(ResTime2),
       erws_api:json_encode({ResTime3})
 ;    
-restime(UserId, State)->
+restime(UserId, State, UiMsg)->
     UserIdBinary = list_to_binary(integer_to_list(UserId)),
     SessionKey =  State#chat_state.sessionkey,
     SessionObj =  State#chat_state.sessionobj,
@@ -287,11 +294,12 @@ restime(UserId, State)->
         {<<"status">>, true},
         {<<"sessionid">>, SessionKeyCustom},
         {<<"ui_settings">>, UiSettingsJ },
-        {<<"ui_msg">>, erws_api:get_key_dict(SessionObj, <<"ui_msg">>, <<"">> ) },
+        {<<"ui_msg">>, UiMsg},
         {<<"user_custom_id">>, erws_api:get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
         {<<"use_f2a">>, erws_api:get_key_dict(SessionObj, <<"use_f2a">>, false) },
         {<<"deal_comission">>, erws_api:get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
-        ],		
+        ],
+    
     {pickle_unicode, UserName } = erws_api:get_key_dict(SessionObj, <<"username">>, {pickle_unicode, <<>>} ),
     ?CONSOLE_LOG("time to user ~p ~n",[ResTime]),
 
