@@ -74,11 +74,11 @@ websocket_handle(Any, Req, State) ->
 websocket_info({msg, Msg}, Req, State)->    
        ?CONSOLE_LOG("simple message result from somebody ~p to ~p",[Msg, State]),
         ResTime = restime(State#chat_state.user_id, State, Msg),
-       {reply, {text, ResTime}, Req}
+       {reply, {text, ResTime}, State}
 ;
 websocket_info({deal_info, Msg}, Req, State)->
        ?CONSOLE_LOG("callback result from somebody ~p to ~p",[Msg, State]),
-       {reply, {text, Msg}, Req};
+       {reply, {text, Msg}, State};
 websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
       ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
 
@@ -94,7 +94,7 @@ websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
       ?CONSOLE_LOG("to client task  ~p ~n",[ResBinary]),
       Req2 = cowboy_req:compact(Req),
       Tasks =  State#chat_state.tasks,
-      {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
+      {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> },
                State#chat_state{tasks=lists:delete(Key, Tasks)} };
 websocket_info({task_result, MyKey, _Body, OtherOf200}, Req, State) ->
       %%% TODO rework 500 task
@@ -112,7 +112,7 @@ websocket_info({task_result, MyKey, _Body, OtherOf200}, Req, State) ->
       Req2 = cowboy_req:compact(Req),
       Tasks =  State#chat_state.tasks,
       
-      {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, Req2, 
+      {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> },  
                State#chat_state{tasks=lists:delete(Key, Tasks)} };
 websocket_info(_Info, Req, State) ->
     ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
