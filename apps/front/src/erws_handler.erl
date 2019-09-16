@@ -29,14 +29,15 @@ terminate(_Req, _State) -> ok.
 % Called for every new websocket connection.
 websocket_init(_Any, Req, []) ->
     ?CONSOLE_LOG("~nNew client ~p", [Req]),
-    { { IP, _Port }, Req_2 } = cowboy_req:peer(Req),
+    {IP, Req_2 } = cowboy_req:header(<<"x-real-ip">>, Req, undefined),
     {CookieSession, Req_3} = cowboy_req:qs_val(<<"token">>, Req_2, undefined), 
     {UserId, SessionObj} = auth_user( CookieSession ),
     %TODO make key from server
     ?CONSOLE_LOG("~n new session  ~n", []),
     ReqRes = cowboy_req:compact(Req_3),
     {ok, ApiToken} = application:get_env(front, token),
-    State = #chat_state{ index = 0, 
+    State = #chat_state{
+                        index = 0, 
                         user_id=UserId,
                         token=ApiToken, 
                         start=now(),
