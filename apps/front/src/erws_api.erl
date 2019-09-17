@@ -300,12 +300,12 @@ process(Key = [<<"api">>| Tail], _User, _Body, Req, State)->
      process_delayed_task(Key, Req, State) ;
 process([<<"time">>], undefined, _Body, Req, State)->
       ResTime = [{<<"deal_comission">>, <<"0.1">>},
-		 {<<"use_f2a">>, false},
-		 {<<"logged">>, false},
-		 {<<"x-cache">>, true},
-		 {<<"status">>, true}
-		 ],
-		 
+                {<<"use_f2a">>, false}, 
+                {<<"logged">>, false},
+                {<<"x-cache">>, true},
+                {<<"status">>, true} 
+                ],
+                
       ResTime1  = get_usd_rate(ResTime),
       ResTime2 = get_time(ResTime1),
       ResTime3 = get_state(ResTime2),

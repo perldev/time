@@ -289,7 +289,15 @@ start_asyn_task(KeyPath, Params, State)->
      run_http(KeyPath, HostUrl, Headers)
 .      
 
-     
+%FOR AJAX
+handle_cast({start_task_brutal, Key, Params }, MyState) ->
+      MyKey = {Key, Params},
+      {Pid, Mont} = start_asyn_task(Key, Params, MyState),
+      DictNew1 = dict:store(Pid, MyKey, MyState#monitor.pids),
+      DictNew2 = dict:store(MyKey, Pid, MyState#monitor.tasks),
+      % duplicate info to ets table
+      ets:insert(tasks, {Key, Pid}),
+      {noreply, MyState#monitor{tasks=DictNew2, pids=DictNew1 } };           
 %%HERE WebSocket
 handle_cast({start_task, Key, Params, Key2}, MyState) ->
    MyKey = {Key, Params},
