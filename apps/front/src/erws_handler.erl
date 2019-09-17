@@ -270,9 +270,9 @@ process({[{<<"syncget">>, Var}]}, UserId, State)->
 % if task exist with result return it and pop from tasks
 % if tasks not exist start it gather user information
 %   starting tasks
-    ?CONSOLE_LOG(" get task for ~p ~p ~n",[ Var, UserId ]),
-
+    ?CONSOLE_LOG(" get sync task for ~p ~p ~n",[ Var, UserId ]),
     {Result, NewState} =  start_sync_task(Var, UserId, State),
+    ?CONSOLE_LOG(" and result of it ~p ~n",[ Result]),
     ResTime = restime(UserId, NewState),
     { << "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">> , NewState}
 ; 
