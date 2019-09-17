@@ -344,7 +344,7 @@ handle_cast( archive_mysql_start, MyState) ->
     {noreply, MyState}.
     
 
-handle_info({http, {ReqestId,  { {HttpVer, Status, HTTP}, _Headers, Body} } }, State )->
+handle_info({http, {ReqestId,  { {HttpVer, 200, HTTP}, _Headers, Body} } }, State )->
     ?CONSOLE_LOG("get child process ~p ~p ~n", [ReqestId,  { {HttpVer, Status, HTTP}, _Headers, Body} ]),
      case  dict:find(ReqestId, State#monitor.pids) of 
           {ok, Key}->
