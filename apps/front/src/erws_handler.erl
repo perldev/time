@@ -273,8 +273,7 @@ process({[{<<"syncget">>, Var}]}, UserId, State)->
     ?CONSOLE_LOG(" get sync task for ~p ~p ~n",[ Var, UserId ]),
     {Result, NewState} =  start_sync_task(Var, UserId, State),
     ?CONSOLE_LOG(" and result of it ~p ~n",[ Result]),
-    ResTime = restime(UserId, NewState),
-    { << "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">> , NewState}
+    { << "{\"result\":", Result/binary,"}">> , NewState}
 ; 
 process({[{<<"get">>, Var}]}, UserId, State)->
 % TODO 
