@@ -255,7 +255,7 @@ process({[{<<"get">>, Var}]}, UserId, State)->
   
 ;
 process({[{<<"echo">>, true}] }, _, State)->
-        ResTime = restime(undefined, State),
+        ResTime = restime(undefined, State, <<"this is echo">>),
         {ResTime, State}
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->
