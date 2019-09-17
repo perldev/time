@@ -3,6 +3,8 @@
 
 %-define(DEBUG,1).
 
+-define(TURNOFFCACHE,1).
+
 -ifdef(DEBUG).
 
 -define('CONSOLE_LOG'(Str, Params),  lager:info(Str, Params) ).

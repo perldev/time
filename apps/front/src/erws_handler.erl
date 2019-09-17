@@ -254,6 +254,10 @@ process({[{<<"get">>, Var}]}, UserId, State)->
     end 
   
 ;
+process({[{<<"echo">>, true}] }, _, State)->
+        ResTime = restime(undefined, State),
+        {ResTime, State}
+;
 process({[{<<"ping">>, true}] }, undefined, State)->
       ResTime = restime(undefined, State),
       looking4finshed(ResTime, undefined, State)

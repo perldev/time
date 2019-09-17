@@ -92,6 +92,17 @@ stop() ->
     gen_server:cast(?MODULE, stop).
 
     
+ 
+
+
+-ifdef(TURNOFFCACHE).
+
+find_in_cache(Key)->
+   ?CONSOLE_LOG(" key  ~p ~n",[MemKey]),  
+   false.
+  
+-else.    
+    
 find_in_cache([<<"api">>, <<"trades">>, <<"buy">>, Var])->
    MemKey = <<?KEY_PREFIX, "buy_list_", Var/binary>>,
    ?CONSOLE_LOG(" key  ~p ~n",[MemKey]),
@@ -140,7 +151,6 @@ find_in_cache([<<"api">>, <<"japan_stat">>, <<"high">>, Var])->
      _ ->
         false
   end;
-  
 find_in_cache([<<"api">>, <<"balance">>,  Var])->
    MemKey = <<?KEY_PREFIX, "balance_", Var/binary>>,
    ?CONSOLE_LOG(" key  ~p ~n",[MemKey]),
@@ -166,7 +176,9 @@ find_in_cache(Key)->
     ?CONSOLE_LOG(" unrecognized search   ~p ~n",[Key]),
     false.
 
-    
+
+-endif.
+
 subscribe_on_cache(K1, K2)->
     case ets:lookup(waitcache, K1 ) of %%check wait list
         [{K1, WaitList}] ->
