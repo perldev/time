@@ -43,6 +43,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
     
+%%it's problem
 handle_call({start_task, Key, Params}, _From, MyState) ->
    MyKey = {Key, Params},
    StartTime = erlang:timestamp(),
@@ -82,7 +83,17 @@ restartall()->
 
     
 start_synctask(Key, Params)->
-    gen_server:call(?MODULE, {start_task, Key, Params}).
+
+    MyState = api_table_holder:status(),
+    MyKey = {Key, Params},
+    StartTime = erlang:timestamp(),
+    ets:insert(tasks, { MyKey, self(),  erlang:timestamp(), undefined}),
+    Body = start_sync_task(Key, Params, MyState),
+    ets:delete(tasks, Key),
+    EndTime = erlang:timestamp(), 
+    ets:insert(tasks_log, {MyKey, self(), StartTime, timer:now_diff(EndTime, StartTime) }),
+    Body.
+
     
 start_task(Key, Params, Session2Connect)->
     gen_server:cast(?MODULE, {start_task, Key, Params, Session2Connect}).
