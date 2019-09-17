@@ -110,7 +110,7 @@ stop() ->
 -ifdef(TURNOFFCACHE).
 
 find_in_cache(Key)->
-   ?CONSOLE_LOG(" key  ~p ~n",[MemKey]),  
+   ?CONSOLE_LOG(" key  ~p ~n",[Key]),  
    false.
   
 -else.    
