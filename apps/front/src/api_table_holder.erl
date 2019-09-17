@@ -4,7 +4,7 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/0, stop/0, status/0, check_task_in_work/1, find_in_cache/1, 
-         start_task/1, start_task_brutal/1, start_task/2, start_task/3, public/1, restartall/0]).
+         start_task/1, start_task_brutal/1, start_task/2, start_task/3, start_synctask/2, public/1, restartall/0]).
 
 -include("erws_console.hrl").
 
@@ -42,7 +42,16 @@ init([]) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-
+    
+handle_call({start_task, Key, Params}, _From, MyState) ->
+   MyKey = {Key, Params},
+   StartTime = erlang:timestamp(),
+   ets:insert(tasks, { MyKey, self(),  erlang:timestamp(), undefined}),
+   Body = start_sync_task(Key, Params, MyState),
+   ets:delete(tasks, Key),
+   EndTime = erlang:timestamp(), 
+    ets:insert(tasks_log, {MyKey, self(), StartTime, timer:now_diff(EndTime, StartTime) }),
+   {reply, Body, MyState };
 handle_call({check, Key }, _From, State) ->
     ?LOG_DEBUG("get msg call ~p ~n", [status]),
     case dict:find(Key, State#monitor.tasks) of
@@ -71,6 +80,9 @@ start_task(Key, Params)->
 restartall()->
     gen_server:call(?MODULE, restartall).
 
+    
+start_synctask(Key, Params)->
+    gen_server:call(?MODULE, {start_task, Key, Params}).
     
 start_task(Key, Params, Session2Connect)->
     gen_server:cast(?MODULE, {start_task, Key, Params, Session2Connect}).
@@ -171,7 +183,7 @@ find_in_cache([<<"api">>, <<"market_prices">>])->
         Val;
      _ ->
         false
-  end;
+    end;
 find_in_cache(Key)->
     ?CONSOLE_LOG(" unrecognized search   ~p ~n",[Key]),
     false.
@@ -192,20 +204,22 @@ subscribe_on_cache(K1, K2)->
     end.
 
     
-    
-
 run_http(Key, GetUrl, Headers)->
+   run_http(Key, GetUrl, Headers, false)
+.    
+    
+run_http(Key, GetUrl, Headers, false)->
    ?CONSOLE_LOG("start separte process ~p with url  ~p with headers ~p  ~n",[ Key, GetUrl, Headers ]), 
-%    spawn_monitor(fun()->  
     {ok, RequestId} = httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], [{body_format, binary}, {sync, false}]),
     {ok, RequestId}
-%                      {ok, Result} = httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], [{body_format, binary}]),
-%                      {_Status, _Headers, Body}  = Result, 
-%                      api_table_holder:save_in_cache(Key, Body)        
-                    
-%                  end) 
-.
- 
+
+;    
+run_http(Key, GetUrl, Headers, true)->
+   ?CONSOLE_LOG("start separte process ~p with url  ~p with headers ~p  ~n",[ Key, GetUrl, Headers ]), 
+    {ok, Result} = httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], [{body_format, binary}, {sync, true}]),
+    {_Status, _Headers, Body}  = Result, 
+    Body.
+    
 
 
 public(Key = [<<"api">>, <<"my_orders">>, Var | Tail])->
@@ -260,6 +274,13 @@ restartall_taskinwork(State)->
                 dict:to_list(Tasks))
 .
 
+start_sync_task(KeyPath, Params, State)->
+     Host = route_search(KeyPath, State#monitor.routes),
+     Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
+     Url = lists:foldl(fun(Key, Url) -> <<Url/binary,  "/", Key/binary >>   end, <<>>, KeyPath),
+     HostUrl = <<Host/binary,  Url/binary, "?api=erl">>,
+     run_http(KeyPath, HostUrl, Headers, true).
+
 start_asyn_task(KeyPath, Params, State)->
      Host = route_search(KeyPath, State#monitor.routes),
      Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
@@ -268,15 +289,7 @@ start_asyn_task(KeyPath, Params, State)->
      run_http(KeyPath, HostUrl, Headers)
 .      
 
-%%not work!!
-handle_cast({start_task_brutal, Key, Params }, MyState) ->
-      MyKey = {Key, Params},
-      {Pid, Mont} = start_asyn_task(Key, Params, MyState),
-       DictNew1 = dict:store(Pid, MyKey, MyState#monitor.pids),
-       DictNew2 = dict:store(MyKey, Pid, MyState#monitor.tasks),
-       % duplicate info to ets table
-       ets:insert(tasks, {Key, Pid}),
-       {noreply, MyState#monitor{tasks=DictNew2, pids=DictNew1 } };      
+     
 %%HERE WebSocket
 handle_cast({start_task, Key, Params, Key2}, MyState) ->
    MyKey = {Key, Params},

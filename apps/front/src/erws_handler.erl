@@ -62,6 +62,7 @@ websocket_handle({text, Msg}, Req, State=#chat_state{index=Index}) ->
     Req2 = cowboy_req:compact(Req),
     ?CONSOLE_LOG("~p send back: ~p ~n",
                 [{?MODULE, ?LINE}, {NewState, Res}]),
+    ets:insert(?CONNS, NewState),                
     case Res of
         ok  -> {ok, Req2, NewState};
         Res -> {reply, {text, Res}, Req2, NewState}
@@ -96,9 +97,11 @@ websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
       ?CONSOLE_LOG("to client task  ~p ~n",[ResBinary]),
       Req2 = cowboy_req:compact(Req),
       Tasks =  State#chat_state.tasks,
+      NewState  =  State#chat_state{tasks=lists:delete(Key, Tasks)},              
+      ets:insert(?CONNS, NewState),                
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> },
               Req2,
-              State#chat_state{tasks=lists:delete(Key, Tasks)} };
+              NewState};
 websocket_info({task_result, MyKey, _Body, OtherOf200}, Req, State) ->
       %%% TODO rework 500 task
       ?CONSOLE_LOG("info: ~p ~n ~p result is  ~p ~n~n", [Req, State, OtherOf200]),
@@ -114,9 +117,11 @@ websocket_info({task_result, MyKey, _Body, OtherOf200}, Req, State) ->
       ResBinary = <<"\"",FirstKey/binary, "\": false" >>,  
       Req2 = cowboy_req:compact(Req),
       Tasks =  State#chat_state.tasks,
+      NewState = State#chat_state{tasks=lists:delete(Key, Tasks)},
+      ets:insert(?CONNS, NewState),                
       {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, 
                 Req2, 
-               State#chat_state{tasks=lists:delete(Key, Tasks)} };
+                NewState };
 websocket_info(_Info, Req, State) ->
       ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
       {ok, Req, State}.
@@ -163,6 +168,27 @@ my_tokens(PreString)->
      [String|QTail]  = binary:split(PreString, [<<"?">>],[global]),
      binary:split(String, [<<"/">>],[global]).
 
+     
+   
+
+
+start_sync_task(Command,  undefined, State)->
+    Key =  my_tokens(Command),  
+    ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
+    Val = api_table_holder:start_synctask(Key, []),
+    ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+    { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State };
+start_sync_task(Command,  UserId, State)->
+    StringTokens =  my_tokens(Command),
+    Key =   case api_table_holder:public(StringTokens) of 
+                  true ->  StringTokens;
+                  false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))] %% adding userid to the path in order to unify this request in cache
+            end,
+    Val = api_table_holder:start_synctask(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ]),
+    ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+    {  << "{", "\"/" , Command/binary, "\":", Val/binary, "}">>, State}.
+    
+    
 
 start_delayed_task(Command,  undefined, State)->
     Key =  my_tokens(Command),
@@ -237,6 +263,19 @@ looking4finshed(ResTime, UserId, State)->
                                 {<< "{\"result\":{", ResBinary/binary,"},\"time_object\":", ResTime/binary, "}">>, NewState}
       end.
  
+ 
+process({[{<<"syncget">>, Var}]}, UserId, State)->
+% TODO 
+% field task object as saved = started or not
+% if task exist with result return it and pop from tasks
+% if tasks not exist start it gather user information
+%   starting tasks
+    ?CONSOLE_LOG(" get task for ~p ~p ~n",[ Var, UserId ]),
+
+    {Result, NewState} =  start_sync_task(Var, UserId, State),
+    ResTime = restime(UserId, NewState),
+    { << "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">> , NewState}
+; 
 process({[{<<"get">>, Var}]}, UserId, State)->
 % TODO 
 % field task object as saved = started or not
@@ -249,13 +288,13 @@ process({[{<<"get">>, Var}]}, UserId, State)->
     case Result of 
        ok -> {Result, NewState};
        _ ->  
-        ResTime = restime(UserId, State),
+        ResTime = restime(UserId, NewState),
         { << "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">> , NewState}
     end 
   
 ;
 process({[{<<"echo">>, true}] }, _, State)->
-        ResTime = restime(undefined, State, <<"this is echo">>),
+        ResTime = restime(undefined, State, <<"this ">>),
         {ResTime, State}
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->
