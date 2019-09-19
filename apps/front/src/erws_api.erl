@@ -268,7 +268,7 @@ process([<<"msg">>, UserId], _, Body, Req, State )->
                 true_response(Req, State)
      end
 ;
-process([<<"callback">>, UserId], _, Body, Req, State )->
+process([<<"subscribe">>, <<"callback">>, UserId], _, Body, Req, State )->
     User = to_integer(UserId),
     ?CONSOLE_LOG(" process callback to  ~p ~n",[ User ]),
     case ets:lookup(?CONNS, User) of
