@@ -4,7 +4,7 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/0, stop/0, status/0, check_task_in_work/1, find_in_cache/1, 
-         start_task/1, start_task_brutal/1, start_task/2, start_task/3, start_synctask/2, public/1, restartall/0]).
+         start_task/1, start_task_brutal/1, start_task/2, start_task/3, start_synctask/3, public/1, restartall/0]).
 
 -include("erws_console.hrl").
 
@@ -43,16 +43,7 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
     
-%%it's problem
-handle_call({start_task, Key, Params}, _From, MyState) ->
-   MyKey = {Key, Params},
-   StartTime = erlang:timestamp(),
-   ets:insert(tasks, { MyKey, self(),  erlang:timestamp(), undefined}),
-   Body = start_sync_task(Key, Params, MyState),
-   ets:delete(tasks, Key),
-   EndTime = erlang:timestamp(), 
-    ets:insert(tasks_log, {MyKey, self(), StartTime, timer:now_diff(EndTime, StartTime) }),
-   {reply, Body, MyState };
+
 handle_call({check, Key }, _From, State) ->
     ?LOG_DEBUG("get msg call ~p ~n", [status]),
     case dict:find(Key, State#monitor.tasks) of
@@ -81,14 +72,17 @@ start_task(Key, Params)->
 restartall()->
     gen_server:call(?MODULE, restartall).
 
-    
-start_synctask(Key, Params)->
+
+start_synctask(Key, Params, [])->
+    start_synctask(Key, Params, <<>>)
+;
+start_synctask(Key, Params, Q)->
 
     MyState = api_table_holder:status(),
     MyKey = {Key, Params},
     StartTime = erlang:timestamp(),
     ets:insert(tasks, { MyKey, self(),  erlang:timestamp(), undefined}),
-    Body = start_sync_task(Key, Params, MyState),
+    Body = start_sync_task(Key, Q,  Params, MyState),
     ets:delete(tasks, Key),
     EndTime = erlang:timestamp(), 
     ets:insert(tasks_log, {MyKey, self(), StartTime, timer:now_diff(EndTime, StartTime) }),
@@ -285,18 +279,26 @@ restartall_taskinwork(State)->
                 dict:to_list(Tasks))
 .
 
-start_sync_task(KeyPath, Params, State)->
+start_sync_task(KeyPath, Q, Params, State)->
      Host = route_search(KeyPath, State#monitor.routes),
      Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
      Url = lists:foldl(fun(Key, Url) -> <<Url/binary,  "/", Key/binary >>   end, <<>>, KeyPath),
-     HostUrl = <<Host/binary,  Url/binary, "?api=erl">>,
+     HostUrl = <<Host/binary,  Url/binary, "?api=erl&", Q/binary >>,
      run_http(KeyPath, HostUrl, Headers, true).
-
+%%TODO add processing HTTP QUERY
 start_asyn_task(KeyPath, Params, State)->
      Host = route_search(KeyPath, State#monitor.routes),
      Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
      Url = lists:foldl(fun(Key, Url) -> <<Url/binary,  "/", Key/binary >>   end, <<>>, KeyPath),
      HostUrl = <<Host/binary,  Url/binary, "?api=erl">>,
+     run_http(KeyPath, HostUrl, Headers)
+.      
+     
+start_asyn_task(KeyPath, Q, Params, State)->
+     Host = route_search(KeyPath, State#monitor.routes),
+     Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
+     Url = lists:foldl(fun(Key, Url) -> <<Url/binary,  "/", Key/binary >>   end, <<>>, KeyPath),
+     HostUrl = <<Host/binary,  Url/binary, "?api=erl&", Q/binary >>,
      run_http(KeyPath, HostUrl, Headers)
 .      
 

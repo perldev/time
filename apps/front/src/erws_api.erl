@@ -84,8 +84,7 @@ check_sign({Sign, LocalKey}, Body, State)->
         _ -> false
    end
 .
-% 
-
+%TODO add processing QUERY HTTP  from task
 process_delayed_task(Key, Req, State)->
     
     case api_table_holder:check_task_in_work(Key)  of 

@@ -166,32 +166,32 @@ revertkey(Command)->
 
 my_tokens(PreString)->
      [String|QTail]  = binary:split(PreString, [<<"?">>],[global]),
-     binary:split(String, [<<"/">>],[global]).
+     {binary:split(String, [<<"/">>],[global]), QTail}.
 
      
    
 
 
 start_sync_task(Command,  undefined, State)->
-    Key =  my_tokens(Command),  
-    ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-    Val = api_table_holder:start_synctask(Key, []),
+    {Key, Q} =  my_tokens(Command),  
+?CONSOLE_LOG(" start task ~p ~p ~n",[ Key, Q]),
+    Val = api_table_holder:start_synctask(Key, [], Q),
     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
     { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State };
 start_sync_task(Command,  UserId, State)->
-    StringTokens =  my_tokens(Command),
+    {StringTokens, Q} =  my_tokens(Command),
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
                   false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))] %% adding userid to the path in order to unify this request in cache
             end,
-    Val = api_table_holder:start_synctask(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ]),
+    Val = api_table_holder:start_synctask(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], Q),
     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
     {  << "{", "\"/" , Command/binary, "\":", Val/binary, "}">>, State}.
     
     
 
 start_delayed_task(Command,  undefined, State)->
-    Key =  my_tokens(Command),
+    {Key, Q } =  my_tokens(Command),
     case api_table_holder:find_in_cache(Key) of
                 false-> 
                     ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
@@ -205,7 +205,7 @@ start_delayed_task(Command,  undefined, State)->
                     { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
     end;
 start_delayed_task(Command,  UserId, State)->
-    StringTokens =  my_tokens(Command),
+    {StringTokens, Q}  =  my_tokens(Command),
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
                   false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))] %% adding userid to the path in order to unify this request in cache
