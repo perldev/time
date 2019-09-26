@@ -166,10 +166,9 @@ revertkey(Command)->
 
 my_tokens(PreString)->
     case binary:split(PreString, [<<"?">>],[global]) of
-     [String, QTail]  -> {String, QTail};
-     [String]->{String, <<>>}
+     [String, QTail]  -> {binary:split(String, [<<"/">>],[global]), QTail};
+     [String]->{binary:split(String, [<<"/">>],[global]), <<>>}
     end.
-
 
      
    
@@ -183,7 +182,7 @@ start_sync_task(Command,  undefined, State)->
     { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State };
 start_sync_task(Command,  UserId, State)->
     {StringTokens, Q} =  my_tokens(Command),
-    ?CONSOLE_LOG(" start task ~p ~p ~n",[ StringTokens, Q]),
+    ?CONSOLE_LOG(" start task ~p ~p ~n",[ Key, Q]),
 
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
