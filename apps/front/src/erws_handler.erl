@@ -179,7 +179,7 @@ url_encode([K|Tail], Accum)->
         url_encode(Tail, <<KeyB/binary,"=", ValueB/binary,"&", Accum/binary>>);
     [Key]->
         KeyB = list_to_binary(edoc_lib:escape_uri( binary_to_list(Key))),    
-        url_encode(Tail, <<KeyB/binary,"=&", Accum/binary>>);
+        url_encode(Tail, <<KeyB/binary,"=&", Accum/binary>>)
    end. 
 
 
