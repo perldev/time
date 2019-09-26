@@ -165,8 +165,11 @@ revertkey(Command)->
 .
 
 my_tokens(PreString)->
-     [String, QTail]  = binary:split(PreString, [<<"?">>],[global]),
-     {binary:split(String, [<<"/">>],[global]), QTail}.
+    case binary:split(PreString, [<<"?">>],[global]) of
+     [String, QTail]  -> {String, QTail};
+     [String]->{String, <<>>}
+    end.
+
 
      
    
