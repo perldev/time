@@ -173,7 +173,7 @@ url_encode([], Accum)->
     Accum;
 url_encode([K|Tail], Accum)->
    case binary:split(K, [<<"=">>],[]) of
-    [Key, Value] = 
+    [Key, Value] -> 
         KeyB = list_to_binary(edoc_lib:escape_uri( binary_to_list(Key))),
         ValueB = list_to_binary(edoc_lib:escape_uri(binary_to_list(Value))),    
         url_encode(Tail, <<KeyB/binary,"=", ValueB/binary,"&", Accum/binary>>);
