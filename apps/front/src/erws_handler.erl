@@ -182,7 +182,7 @@ start_sync_task(Command,  undefined, State)->
     { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State };
 start_sync_task(Command,  UserId, State)->
     {StringTokens, Q} =  my_tokens(Command),
-    ?CONSOLE_LOG(" start task ~p ~p ~n",[ Key, Q]),
+    ?CONSOLE_LOG(" start task ~p ~p ~n",[ StringTokens, Q]),
 
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
