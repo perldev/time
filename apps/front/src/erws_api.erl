@@ -258,7 +258,6 @@ process([<<"msg">>, UserId], _, Body, Req, State )->
     User = to_integer(UserId),
     ?CONSOLE_LOG(" process msg to  ~p ~n",[ User ]),
 
-   
     case ets:lookup(?CONNS, User) of
         [] -> false_response(Req, State);
         List ->
