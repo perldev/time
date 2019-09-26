@@ -164,9 +164,28 @@ revertkey(Command)->
    lists:foldl(fun(Key, Url) -> <<Url/binary, "/", Key/binary >>   end, <<>>, Command)
 .
 
+
+url_encode(Q)->
+    List = binary:split(Q, [<<"&">>],[global]),
+    url_encode(List, <<>>).
+
+url_encode([], Accum)->
+    Accum;
+url_encode([K|Tail], Accum)->
+   case binary:split(K, [<<"=">>],[]) of
+    [Key, Value] = 
+        KeyB = list_to_binary(edoc_lib:escape_uri( binary_to_list(Key))),
+        ValueB = list_to_binary(edoc_lib:escape_uri(binary_to_list(Value))),    
+        url_encode(Tail, <<KeyB/binary,"=", ValueB/binary,"&", Accum/binary>>);
+    [Key]->
+        KeyB = list_to_binary(edoc_lib:escape_uri( binary_to_list(Key))),    
+        url_encode(Tail, <<KeyB/binary,"=&", Accum/binary>>);
+   end. 
+
+
 my_tokens(PreString)->
     case binary:split(PreString, [<<"?">>],[global]) of
-     [String, QTail]  -> {binary:split(String, [<<"/">>],[global]), QTail};
+     [String, QTail]  -> {binary:split(String, [<<"/">>],[global]), url_encode(QTail)};
      [String]->{binary:split(String, [<<"/">>],[global]), <<>>}
     end.
 
