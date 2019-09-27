@@ -44,7 +44,8 @@ websocket_init(_Any, Req, []) ->
                         user_id=UserId,
                         token=ApiToken, 
                         start=now(),
-                        ip=IP, tasks=[],
+                        ip=IP,
+                        tasks=[],
                         sessionobj=SessionObj, 
                         sessionkey=CookieSession,
                         pid = self()},
@@ -128,6 +129,7 @@ websocket_info(_Info, Req, State) ->
     
 
 websocket_terminate(Reason, Req, State) ->
+    
     ?CONSOLE_LOG("terminate: ~p ,~n ~p, ~n ~p~n~n",
 		 [Reason, Req, State]),
     ok.
