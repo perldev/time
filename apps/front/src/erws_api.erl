@@ -67,7 +67,7 @@ false_response(Req, State)->
 wait_response(Req, State)->
    {raw_answer, {502, <<"{\"status\":\"wait\",\"timeout\":1000}">>, headers_json_plain() },  Req, State}.
    
-true_response(Req, State, He)->
+true_response(Req, State)->
    {raw_answer, {200, <<"{\"status\":\"true\"}">>, headers_json_plain() },  Req, State}.
    
  
