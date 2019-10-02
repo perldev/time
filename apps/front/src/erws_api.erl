@@ -206,7 +206,33 @@ process_delayed_task(Key, Req, State)->
 %   #Ref<0.3998443537.3514564610.225816>,
 %   {1568,637027,856641},
 %   100346}]
+process([<<"api">>, <<"subauth">>], UserId, Body, Req, State )->
+    case UserId of 
+        {api, RawUserId} ->
+            Headers = [ {<<"X-Forwarded-User">>, RawUserId},
+                        {<<"Cache-Control">>, <<"no-cache, must-revalidate">>},
+                        {<<"Pragma">>, <<"no-cache">>},
+                        {<<"Content-Type">>, <<"application/json">>} 
+                      ],
+            {raw_answer, {200, <<"{\"status\":\"true\"}">>, Headers },  Req, State};
+        {session, undefined, SessionKey}-> 
+            false_response(Req, State); 
+        {session, SessionObj, SessionKey} ->  
+            ?CONSOLE_LOG("session obj for subauth ~p ~n",[SessionObj]),
+            case get_key_dict(SessionObj, <<"user_id">>, false) of
+                false -> false_response(Req, State); 
+                UId ->
+                    UserIdBinary = list_to_binary(integer_to_list(UId)),
+                    Headers = [ {<<"X-Forwarded-User">>, UserIdBinary},
+                                {<<"Cache-Control">>, <<"no-cache, must-revalidate">>},
+                                {<<"Pragma">>, <<"no-cache">>},
+                                {<<"Content-Type">>, <<"application/json">>} 
+                              ],
+                    {raw_answer, {200, <<"{\"status\":\"true\"}">>, Headers },  Req, State}
 
+            end
+    end
+;    
 process([<<"clear">>, <<"tasks_log">>, <<"mysecretkey2">>], _, Body, Req, State )->
     ets:delete_all_objects(tasks_log),
     true_response(Req, State)
@@ -295,33 +321,7 @@ process(Key = [<<"start">>, <<"api">>| Tail], _User, _Body, Req, State)->
 process(Key = [<<"api">>| Tail], _User, _Body, Req, State)->
     ?CONSOLE_LOG(" process path ~p ~n",[ Key]),
      process_delayed_task(Key, Req, State) ;
-process([<<"api">>, <<"subauth">>], UserId, Body, Req, State )->
-    case UserId of 
-        {api, RawUserId} ->
-            Headers = [ {<<"X-Forwarded-User">>, RawUserId},
-                        {<<"Cache-Control">>, <<"no-cache, must-revalidate">>},
-                        {<<"Pragma">>, <<"no-cache">>},
-                        {<<"Content-Type">>, <<"application/json">>} 
-                      ],
-            {raw_answer, {200, <<"{\"status\":\"true\"}">>, Headers },  Req, State};
-        {session, undefined, SessionKey}-> 
-            false_response(Req, State); 
-        {session, SessionObj, SessionKey} ->  
-            ?CONSOLE_LOG("session obj for subauth ~p ~n",[SessionObj]),
-            case get_key_dict(SessionObj, <<"user_id">>, false) of
-                false -> false_response(Req, State); 
-                UId ->
-                    UserIdBinary = list_to_binary(integer_to_list(UId)),
-                    Headers = [ {<<"X-Forwarded-User">>, UserIdBinary},
-                                {<<"Cache-Control">>, <<"no-cache, must-revalidate">>},
-                                {<<"Pragma">>, <<"no-cache">>},
-                                {<<"Content-Type">>, <<"application/json">>} 
-                              ],
-                    {raw_answer, {200, <<"{\"status\":\"true\"}">>, Headers },  Req, State}
 
-            end
-    end
-;    
 process([<<"time">>], undefined, _Body, Req, State)->
       ResTime = [{<<"deal_comission">>, <<"0.1">>},
                 {<<"use_f2a">>, false}, 
