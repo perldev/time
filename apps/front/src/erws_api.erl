@@ -298,7 +298,7 @@ process(Key = [<<"api">>| Tail], _User, _Body, Req, State)->
 process([<<"api">>, <<"subauth">>], UserId, Body, Req, State )->
     case UserId of 
         {api, RawUserId} ->
-            Headers = [ {<<"X-Forwarded-User">>, UserIdBinary},
+            Headers = [ {<<"X-Forwarded-User">>, RawUserId},
                         {<<"Cache-Control">>, <<"no-cache, must-revalidate">>},
                         {<<"Pragma">>, <<"no-cache">>},
                         {<<"Content-Type">>, <<"application/json">>} 
