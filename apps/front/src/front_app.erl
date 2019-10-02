@@ -9,7 +9,7 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1, start/0]).
+-export([start/2, stop/1, start/0, stop/0]).
 
 %%====================================================================
 %% API
@@ -61,6 +61,9 @@ start(_StartType, _StartArgs) ->
 stop(_State) ->
     ok.
 
+    
+stop()->
+    appliction:stop(front).
 %%====================================================================
 %% Internal functions
 %%====================================================================
