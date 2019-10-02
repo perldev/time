@@ -303,7 +303,7 @@ process([<<"api">>, <<"subauth">>], UserId, Body, Req, State )->
                         {<<"Pragma">>, <<"no-cache">>},
                         {<<"Content-Type">>, <<"application/json">>} 
                       ],
-            {raw_answer, {200, <<"{\"status\":\"true\"}">>, Headers },  Req, State}
+            {raw_answer, {200, <<"{\"status\":\"true\"}">>, Headers },  Req, State};
         {session, undefined, SessionKey}-> 
             false_response(Req, State); 
         {session, SessionObj, SessionKey} ->  
