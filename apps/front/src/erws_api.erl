@@ -358,16 +358,22 @@ process([<<"time">>], {session, SessionObj, SessionKey}, _Body, Req, NewState)->
               UserIdBinary = list_to_binary(integer_to_list(UserId)),
               ?CONSOLE_LOG("user id ~p~n", [UserIdBinary]), 
               SessionKeyCustom = list_to_binary(hexstring(crypto:hash(sha256, <<?KEY_PREFIX,SessionKey/binary, UserIdBinary/binary>>))), 
+              UiSettingsJ = case erws_api:get_key_dict(SessionObj, <<"ui_settings">>, [] ) of
+                    [] ->  [];
+                    UiSettings -> erws_api:dict_to_json(UiSettings)
+              end,
               ResTime = [
                     {<<"logged">>, true},
                     {<<"x-cache">>, true},
                     {<<"status">>, true},
                     {<<"sessionid">>, SessionKeyCustom},
-                    {<<"ui_settings">>, get_key_dict(SessionObj, <<"ui_settings">>, []) },                    
+                    {<<"ui_settings">>, UiSettingsJ },                    
                     {<<"user_custom_id">>, get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
                     {<<"use_f2a">>, get_key_dict(SessionObj, <<"use_f2a">>, false) },
                     {<<"deal_comission">>, get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
-                    ],		
+                    ],
+
+		
             {pickle_unicode, UserName } = get_key_dict(SessionObj, <<"username">>, {pickle_unicode, <<>>} ),
       % move spawn
                mcd:set(?LOCAL_CACHE, <<?KEY_PREFIX, "chat_", SessionKeyCustom/binary>>, pickle:term_to_pickle(UserName)),
@@ -396,7 +402,8 @@ load_user_session(SessionKey)->
 auth_user(Req, Body, State)->
        {Sign, Req3 }  = cowboy_req:header(<<"api_sign">>, Req, undefined),
        {PublicKey, Req4_ }  = cowboy_req:header(<<"public_key">>, Req3, undefined),
-       {Headers, Req4 }  = cowboy_req:headers(Req4_),
+       {Token, Req3_ }  = cowboy_req:header(<<"token">>, Req4_, undefined),
+       {Headers, Req4 }  = cowboy_req:headers(Req3_),
        {CookieSession, Req5} = cowboy_req:cookie(<<"sessionid">>, Req4, undefined), 
 
        ?CONSOLE_LOG(" request from ~p ~n",[ CookieSession]),
