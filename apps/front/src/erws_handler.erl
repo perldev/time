@@ -7,7 +7,7 @@
 % Behaviour cowboy_http_websocket_handler
 -behaviour(cowboy_websocket_handler).
 
--export([revertkey/1]).
+-export([revertkey/1, process/3]).
 
 -export([websocket_init/3]).
 
