@@ -288,13 +288,13 @@ process({[{<<"echo">>, true}] }, _, State)->
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->
       ResTime = restime(undefined, State),
-       {ResTime, State}
+      { <<"{\"time_object\":", ResTime/binary, "}">> , State}
 ;
 %TODO
 % check ready tasks if existed return it all
 process( ReqJson = {[{<<"ping">>, true}]}, UserId, State)->
     ResTime = restime(UserId, State),
-    {ResTime, State}
+    {<<"{\"time_object\":",  ResTime/binary, "}">>, State}
 .
 
 
