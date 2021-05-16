@@ -4,7 +4,7 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([start_link/0, stop/0, status/0, check_task_in_work/1, find_in_cache/1, 
-         start_task/1, start_task_brutal/1, start_task/2, start_task/3, start_synctask/3, public/1, restartall/0]).
+         start_task/1, start_task_brutal/1, start_task/2, start_task/3, start_synctask/4, public/1, restartall/0]).
 
 -include("erws_console.hrl").
 
@@ -25,7 +25,7 @@ init([]) ->
         TidCache = ets:new(waitcache, [set, public, named_table, {heir,none},
                               {write_concurrency,false}, {read_concurrency,true}]),
                               
-        ets:new(?CONNS, [duplicate_bag, public, named_table, {heir,none},
+        ets:new(?CONNS, [set, public, named_table, {heir,none},
                                         {write_concurrency,false}, {read_concurrency,true}, {keypos, 2}]),
                               
                               
@@ -72,20 +72,24 @@ start_task(Key, Params)->
 restartall()->
     gen_server:call(?MODULE, restartall).
 
+    
+start_sync_task(KeyPath, Q, Params, State, Async)->
+     Host = route_search(KeyPath, State#monitor.routes),
+     Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
+     Url = lists:foldl(fun(Key, Url) -> <<Url/binary,  "/", Key/binary >>   end, <<>>, KeyPath),
+     HostUrl = <<Host/binary,  Url/binary, "?api=erl&", Q/binary >>,
+     run_http(KeyPath, HostUrl, Headers, Async).        
 
-start_synctask(Key, Params, [])->
-    start_synctask(Key, Params, <<>>)
+     
+start_synctask(Key, Params, [], Async)->
+    start_synctask(Key, Params, <<>>, Async)
 ;
-start_synctask(Key, Params, Q)->
-
+start_synctask(Key, Params, Q, Async)->
     MyState = api_table_holder:status(),
     MyKey = {Key, Params},
     StartTime = erlang:timestamp(),
-    ets:insert(tasks, { MyKey, self(),  erlang:timestamp(), undefined}),
-    Body = start_sync_task(Key, Q,  Params, MyState),
-    ets:delete(tasks, Key),
+    Body = start_sync_task(Key, Q,  Params, MyState, Async),
     EndTime = erlang:timestamp(), 
-    ets:insert(tasks_log, {MyKey, self(), StartTime, timer:now_diff(EndTime, StartTime) }),
     Body.
 
     
@@ -210,7 +214,7 @@ subscribe_on_cache(K1, K2)->
 
     
 run_http(Key, GetUrl, Headers)->
-   run_http(Key, GetUrl, Headers, false)
+   run_http(Key, GetUrl, Headers, [{sync, false}, {body_format, binary}])
 .    
     
 run_http(Key, GetUrl, Headers, false)->
@@ -219,9 +223,9 @@ run_http(Key, GetUrl, Headers, false)->
     {ok, RequestId}
 
 ;    
-run_http(Key, GetUrl, Headers, true)->
+run_http(Key, GetUrl, Headers, Options)->
    ?CONSOLE_LOG("start separte process ~p with url  ~p with headers ~p  ~n",[ Key, GetUrl, Headers ]), 
-    {ok, Result} = httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], [{body_format, binary}, {sync, true}]),
+    {ok, Result} = httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], Options),
     {_Status, _Headers, Body}  = Result, 
     Body.
     
@@ -279,12 +283,7 @@ restartall_taskinwork(State)->
                 dict:to_list(Tasks))
 .
 
-start_sync_task(KeyPath, Q, Params, State)->
-     Host = route_search(KeyPath, State#monitor.routes),
-     Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
-     Url = lists:foldl(fun(Key, Url) -> <<Url/binary,  "/", Key/binary >>   end, <<>>, KeyPath),
-     HostUrl = <<Host/binary,  Url/binary, "?api=erl&", Q/binary >>,
-     run_http(KeyPath, HostUrl, Headers, true).
+
 %%TODO add processing HTTP QUERY
 start_asyn_task(KeyPath, Params, State)->
      Host = route_search(KeyPath, State#monitor.routes),

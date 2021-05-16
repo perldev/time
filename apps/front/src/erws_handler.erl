@@ -82,47 +82,27 @@ websocket_info({msg, Msg}, Req, State)->
 ;
 websocket_info({deal_info, Msg}, Req, State)->
        ?CONSOLE_LOG("callback result from somebody ~p to ~p",[Msg, State]),
-       {reply, {text, Msg}, Req, State};
-websocket_info({task_result, MyKey, Body, 200}, Req, State) ->
-      ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
+       {reply, {text, Msg}, Req, State};       
+websocket_info({http, {ReqestId,  { {HttpVer, 200, HTTP}, _Headers, Body} } }, Req, State )->
+    ?CONSOLE_LOG("get result from task child process ~p ~p ~n", [ReqestId,  { {HttpVer, Status, HTTP}, _Headers, Body} ]),
+    Tasks =  State#chat_state.tasks,
+    case lists:keysearch(ReqestId, 1, Tasks) of 
+        {value, {ReqestId, Key, Command}} ->
+            Msg =   << "{", "\"/" , Command/binary, "\":", Body/binary, "}">>,
+            NewTaskList = lists:keydelete(ReqestId, 1,  Tasks),
+            {reply, {text, Msg}, Req, State#chat_state{tasks=NewTaskList}};
+        _ ->
+            ?CONSOLE_LOG("unexpected  result from somebody ~p to ~p",[ReqestId, State]),
+            {ok, Req, State}
 
-      ResTime = restime(State#chat_state.user_id, State),
-      ?CONSOLE_LOG("callback result of task  ~p for ~p ~n",[MyKey, State]),
-      {Key, Params} = MyKey,
-      PreKey = case State#chat_state.user_id of
-                   undefined -> Key;
-                   Value ->  BinUserId = list_to_binary( integer_to_list(Value)), lists:delete(BinUserId, Key)
-               end,                 
-      FirstKey = revertkey(PreKey),
-      ResBinary = <<"\"",FirstKey/binary, "\":", Body/binary>>,  
-      ?CONSOLE_LOG("to client task  ~p ~n",[ResBinary]),
-      Req2 = cowboy_req:compact(Req),
-      Tasks =  State#chat_state.tasks,
-      NewState  =  State#chat_state{tasks=lists:delete(Key, Tasks)},              
-      ets:insert(?CONNS, NewState),                
-      {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> },
-              Req2,
-              NewState};
-websocket_info({task_result, MyKey, _Body, OtherOf200}, Req, State) ->
-      %%% TODO rework 500 task
-      ?CONSOLE_LOG("info: ~p ~n ~p result is  ~p ~n~n", [Req, State, OtherOf200]),
-      ResTime = restime(State#chat_state.user_id, State),
-      {Key, Params} = MyKey,
-      ?CONSOLE_LOG("callback result of task  ~p for ~p ~n",[Key, State]),
-      PreKey = case State#chat_state.user_id of
-                   undefined -> Key;
-                   Value ->  BinUserId = list_to_binary( integer_to_list(Value)), 
-                             lists:delete(BinUserId, Key)
-               end,                 
-      FirstKey = revertkey(PreKey),
-      ResBinary = <<"\"",FirstKey/binary, "\": false" >>,  
-      Req2 = cowboy_req:compact(Req),
-      Tasks =  State#chat_state.tasks,
-      NewState = State#chat_state{tasks=lists:delete(Key, Tasks)},
-      ets:insert(?CONNS, NewState),                
-      {reply, {text,  << "{\"result\":{", ResBinary/binary,"}, \"time_object\":", ResTime/binary, "}">> }, 
-                Req2, 
-                NewState };
+    end
+;%%everything other than 200 just delete
+websocket_info({http, {ReqestId,  Res} }, Req, State )->
+    ?CONSOLE_LOG("get FAIL result  from task child process ~p ~p ~n", [ReqestId,  Res ]),
+    Tasks =  State#chat_state.tasks,
+    NewTaskList = lists:keydelete(ReqestId, 1,  Tasks),
+    {ok, Req, State#chat_state{tasks=NewTaskList}}
+;
 websocket_info(_Info, Req, State) ->
       ?CONSOLE_LOG("info: ~p ~n ~p~n~n", [Req, State]),
       {ok, Req, State}.
@@ -198,7 +178,7 @@ my_tokens(PreString)->
 start_sync_task(Command,  undefined, State)->
     {Key, Q} =  my_tokens(Command),  
     ?CONSOLE_LOG(" start task ~p ~p ~n",[ Key, Q]),
-    Val = api_table_holder:start_synctask(Key, [], Q),
+    Val = api_table_holder:start_synctask(Key, [], Q, [{sync, true}, {body_format, binary}]),
     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
     { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State };
 start_sync_task(Command,  UserId, State)->
@@ -209,44 +189,34 @@ start_sync_task(Command,  UserId, State)->
                   true ->  StringTokens;
                   false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))] %% adding userid to the path in order to unify this request in cache
             end,
-    Val = api_table_holder:start_synctask(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], Q),
+    Val = api_table_holder:start_synctask(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], Q, [{sync, true}, {body_format, binary}]),
     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
     {  << "{", "\"/" , Command/binary, "\":", Val/binary, "}">>, State}.
-    
-    
 
 start_delayed_task(Command,  undefined, State)->
-    {Key, Q } =  my_tokens(Command),
-    case api_table_holder:find_in_cache(Key) of
-                false-> 
-                    ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                    api_table_holder:start_task(Key, [], self()),
-                    Tasks = State#chat_state.tasks,    
-                    { ok, State#chat_state{tasks=[Key|Tasks] } };
-                Val -> 
-                    ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
-                    Tasks = State#chat_state.tasks,    
-                    BinCommanKey = revertkey(Key),
-                    { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
-    end;
+    {Key, Q} =  my_tokens(Command),  
+    ?CONSOLE_LOG(" start task ~p ~p ~n",[ Key, Q]),
+    {ok, Val} = api_table_holder:start_synctask(Key, [], Q, [{sync, false}, {body_format, binary}]),
+    ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+    {Val, Key, Command}    
+    ;
 start_delayed_task(Command,  UserId, State)->
     {StringTokens, Q}  =  my_tokens(Command),
     Key =   case api_table_holder:public(StringTokens) of 
                   true ->  StringTokens;
                   false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))] %% adding userid to the path in order to unify this request in cache
             end,
-    case api_table_holder:find_in_cache(Key) of
-                false-> 
-                    ?CONSOLE_LOG(" start task ~p ~n",[ Key]),
-                    api_table_holder:start_task(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], self()),
-                    Tasks = State#chat_state.tasks,    
-                    { ok, State#chat_state{tasks=[Key|Tasks] } };
-                Val -> 
-                    ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
-                    Tasks = State#chat_state.tasks,
-                    BinCommanKey = revertkey(Key),
-                    {  << "{", "\"/" , Command/binary, "\":", Val/binary, "}">>, State#chat_state{tasks=lists:delete(Key, Tasks)} } 
-    end.
+    {StringTokens, Q} =  my_tokens(Command),
+    ?CONSOLE_LOG(" start task ~p ~p ~n",[ StringTokens, Q]),
+
+    Key =   case api_table_holder:public(StringTokens) of 
+                  true ->  StringTokens;
+                  false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))] %% adding userid to the path in order to unify this request in cache
+            end,
+    {ok, Val} = api_table_holder:start_synctask(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], Q, [{sync, false}, {body_format, binary}]),
+    ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
+    {Val, Key, Command}    
+.
        
 
 looking4finshed(ResTime, undefined, State)-> 
@@ -307,14 +277,9 @@ process({[{<<"get">>, Var}]}, UserId, State)->
 % if tasks not exist start it gather user information
 %   starting tasks
     ?CONSOLE_LOG(" get task for ~p ~p ~n",[ Var, UserId ]),
-
-    {Result, NewState} =  start_delayed_task(Var, UserId, State),
-    case Result of 
-       ok -> {Result, NewState};
-       _ ->  
-        ResTime = restime(UserId, NewState),
-        { << "{\"result\":", Result/binary,",\"time_object\":", ResTime/binary,"}">> , NewState}
-    end 
+    {ReqestId, Key, Command} =  start_delayed_task(Var, UserId, State),
+    L = State#chat_state.tasks,
+    {ok, State#chat_state{tasks=[{ReqestId, Key, Command}|L]}}
   
 ;
 process({[{<<"echo">>, true}] }, _, State)->
@@ -323,13 +288,13 @@ process({[{<<"echo">>, true}] }, _, State)->
 ;
 process({[{<<"ping">>, true}] }, undefined, State)->
       ResTime = restime(undefined, State),
-      looking4finshed(ResTime, undefined, State)
+       {ResTime, State}
 ;
 %TODO
 % check ready tasks if existed return it all
 process( ReqJson = {[{<<"ping">>, true}]}, UserId, State)->
     ResTime = restime(UserId, State),
-    looking4finshed(ResTime, UserId, State)
+    {ResTime, State}
 .
 
 
@@ -362,6 +327,7 @@ restime(UserId, State, UiMsg)->
                     [] ->  [];
                     UiSettings -> erws_api:dict_to_json(UiSettings)
                   end,
+   ?CONSOLE_LOG("session obj ~p ~n",[SessionObj]),
     ResTime = [
         {<<"logged">>, true},
         {<<"x-cache">>, true},
