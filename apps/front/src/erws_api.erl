@@ -43,7 +43,7 @@ headers_png() ->
         
 % Should never get here.
 handle(Req, State) ->
-      ?CONSOLE_LOG("====================================~nrequest: ~p ~n", [Req]),
+      ?CONSOLE_LOG("====================================~nrequest: ~p ~p ~n", [Req, State]),
       {Path, Req1} = cowboy_req:path_info(Req),
       {ok, Body, Req2 } = cowboy_req:body(Req1),      
       {UserId, ResReq} = auth_user(Req2, Body, State),
@@ -207,6 +207,9 @@ process_delayed_task(Key, Req, State)->
 %   {1568,637027,856641},
 %   100346}]
 process([<<"api">>, <<"subauth">>], UserId, Body, Req, State )->
+
+
+
     case UserId of 
         {api, RawUserId} ->
             Headers = [ {<<"X-Forwarded-User">>, RawUserId},
@@ -370,7 +373,7 @@ process([<<"time">>], {session, SessionObj, SessionKey}, _Body, Req, NewState)->
                     {<<"ui_settings">>, UiSettingsJ },                    
                     {<<"user_custom_id">>, get_key_dict(SessionObj, <<"user_custom_id">>, <<>>) },
                     {<<"use_f2a">>, get_key_dict(SessionObj, <<"use_f2a">>, false) },
-                    {<<"deal_comission">>, get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.05">>) }
+                    {<<"deal_comission">>, get_key_dict(SessionObj, <<"deal_comission_show">>, <<"0.1">>) }
                     ],
 
 		
@@ -407,7 +410,7 @@ auth_user(Req, Body, State)->
        {CookieSession, Req5} = cowboy_req:cookie(<<"sessionid">>, Req4, undefined), 
 
        ?CONSOLE_LOG(" request from ~p ~n",[ CookieSession]),
-       ?CONSOLE_LOG(" request public key ~p ~n",[ PublicKey ]),
+       ?CONSOLE_LOG(" request public key ~p  token ~p ~n",[ PublicKey, Token]),
        ?CONSOLE_LOG(" headers ~p ~n",[ Headers ]),
 
        case CookieSession of 
