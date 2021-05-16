@@ -88,7 +88,7 @@ websocket_info({http, {ReqestId,  { {HttpVer, 200, HTTP}, _Headers, Body} } }, R
     Tasks =  State#chat_state.tasks,
     case lists:keysearch(ReqestId, 1, Tasks) of 
         {value, {ReqestId, Key, Command}} ->
-            Msg =   << "{", "\"/" , Command/binary, "\":", Body/binary, "}">>,
+            Msg =   << "{ \"result\":{", "\"/" , Command/binary, "\":", Body/binary,"}}">>,
             NewTaskList = lists:keydelete(ReqestId, 1,  Tasks),
             {reply, {text, Msg}, Req, State#chat_state{tasks=NewTaskList}};
         _ ->
