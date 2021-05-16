@@ -3,7 +3,7 @@
 NODE=front_cache
 HOST=btc-tradecomua.localdomain
 #   localhost.localdomain
-HOST_TEST=localhost.localdomain
+HOST_TEST=prod2.btc-trade.app
 APP=front_app
 EBIN_DIR=_build/default/lib/*/ebin
 HOME_D=deps
@@ -23,16 +23,17 @@ start(){
 }
 start_debug(){
 	echo "starting debug"
-	$ERL    $HOME_P   -eval "$APP:start()"  -kernel error_logger false    -boot start_sasl  -$TYPE debug_$NODE@$HOST_TEST -config config/sys
+	$ERL    $HOME_P   -eval "$APP:start()"  -kernel error_logger false    -boot start_sasl  -sname debug_$NODE -config config/sys -extra  +unlinked 
 
 
 }
 shell()
 {
-	$ERL \
-	-$TYPE shell$NODE@$HOST \
-	$HOME_P \
-	-boot start_sasl 
+	$ERL    $HOME_P    -kernel error_logger false -setcookie mytoken -boot start_sasl  -name debug_$NODE@$HOST_TEST -config config/sys 
+	#$ERL \
+	#-$TYPE shell$NODE@$HOST \
+	#$HOME_P \
+	#-boot start_sasl 
 	
 }
 ctl()
