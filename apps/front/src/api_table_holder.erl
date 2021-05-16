@@ -78,7 +78,8 @@ start_sync_task(KeyPath, Q, Params, State, Async)->
      Headers = lists:map(fun(E)-> process_params2headers(E) end, Params),
      Url = lists:foldl(fun(Key, Url) -> <<Url/binary,  "/", Key/binary >>   end, <<>>, KeyPath),
      HostUrl = <<Host/binary,  Url/binary, "?api=erl&", Q/binary >>,
-     run_http(KeyPath, HostUrl, Headers, Async).        
+     {ok, Result} = run_http(KeyPath, HostUrl, Headers, Async),
+     Result.
 
      
 start_synctask(Key, Params, [], Async)->
@@ -219,15 +220,12 @@ run_http(Key, GetUrl, Headers)->
     
 run_http(Key, GetUrl, Headers, false)->
    ?CONSOLE_LOG("start separte process ~p with url  ~p with headers ~p  ~n",[ Key, GetUrl, Headers ]), 
-    {ok, RequestId} = httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], [{body_format, binary}, {sync, false}]),
-    {ok, RequestId}
+    httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], [{body_format, binary}, {sync, false}])
 
-;    
+;
 run_http(Key, GetUrl, Headers, Options)->
    ?CONSOLE_LOG("start separte process ~p with url  ~p with headers ~p  ~n",[ Key, GetUrl, Headers ]), 
-    {ok, Result} = httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], Options),
-    {_Status, _Headers, Body}  = Result, 
-    Body.
+     httpc:request(get, {binary_to_list(GetUrl) ,  Headers }, [], Options).
     
 
 

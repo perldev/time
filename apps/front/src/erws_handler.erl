@@ -179,8 +179,10 @@ start_sync_task(Command,  undefined, State)->
     {Key, Q} =  my_tokens(Command),  
     ?CONSOLE_LOG(" start task ~p ~p ~n",[ Key, Q]),
     Val = api_table_holder:start_synctask(Key, [], Q, [{sync, true}, {body_format, binary}]),
+    {_Status, _Headers, Body}  = Val, 
+
     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
-    { << "{","\"/",Command/binary, "\":", Val/binary, "}">>, State };
+    { << "{","\"/",Command/binary, "\":", Body/binary, "}">>, State };
 start_sync_task(Command,  UserId, State)->
     {StringTokens, Q} =  my_tokens(Command),
     ?CONSOLE_LOG(" start task ~p ~p ~n",[ StringTokens, Q]),
@@ -191,12 +193,14 @@ start_sync_task(Command,  UserId, State)->
             end,
     Val = api_table_holder:start_synctask(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], Q, [{sync, true}, {body_format, binary}]),
     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
-    {  << "{", "\"/" , Command/binary, "\":", Val/binary, "}">>, State}.
+    {_Status, _Headers, Body}  = Val, 
+
+    {  << "{", "\"/" , Command/binary, "\":", Body/binary, "}">>, State}.
 
 start_delayed_task(Command,  undefined, State)->
     {Key, Q} =  my_tokens(Command),  
     ?CONSOLE_LOG(" start task ~p ~p ~n",[ Key, Q]),
-    {ok, Val} = api_table_holder:start_synctask(Key, [], Q, [{sync, false}, {body_format, binary}]),
+    Val = api_table_holder:start_synctask(Key, [], Q, [{sync, false}, {body_format, binary}]),
     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
     {Val, Key, Command}    
     ;
@@ -213,7 +217,7 @@ start_delayed_task(Command,  UserId, State)->
                   true ->  StringTokens;
                   false -> StringTokens ++ [list_to_binary(integer_to_list(UserId))] %% adding userid to the path in order to unify this request in cache
             end,
-    {ok, Val} = api_table_holder:start_synctask(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], Q, [{sync, false}, {body_format, binary}]),
+    Val = api_table_holder:start_synctask(Key, [ {user_id, integer_to_list(UserId) }, {token, State#chat_state.token } ], Q, [{sync, false}, {body_format, binary}]),
     ?CONSOLE_LOG(" wait task ~p ~p ~n",[ Val, Key ]),
     {Val, Key, Command}    
 .
