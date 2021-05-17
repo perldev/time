@@ -283,7 +283,7 @@ process({[{<<"get">>, Var}]}, UserId, State)->
     ?CONSOLE_LOG(" get task for ~p ~p ~n",[ Var, UserId ]),
     {ReqestId, Key, Command} =  start_delayed_task(Var, UserId, State),
     L = State#chat_state.tasks,
-    {<< "{\"status\": True}">> , State#chat_state{tasks=[{ReqestId, Key, Command}|L]}}
+    {<< "{\"status\": true}">> , State#chat_state{tasks=[{ReqestId, Key, Command}|L]}}
   
 ;
 process({[{<<"echo">>, true}] }, _, State)->
