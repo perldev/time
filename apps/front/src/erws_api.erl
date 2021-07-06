@@ -61,6 +61,10 @@ handle(Req, State) ->
 
 terminate(_Req, _State) -> ok.
 
+false_response(Code, Req, State)->
+   {raw_answer, {Code, <<"{\"status\":\"false\"}">>, headers_json_plain() },  Req, State}.
+ 
+
 false_response(Req, State)->
    {raw_answer, {500, <<"{\"status\":\"false\"}">>, headers_json_plain() },  Req, State}.
  
@@ -209,18 +213,21 @@ process_delayed_task(Key, Req, State)->
 process([<<"api">>, <<"subauth">>], UserId, Body, Req, State )->
     case UserId of 
         {api, RawUserId} ->
-            Headers = [ {<<"X-Forwarded-User">>, RawUserId},
+            UserIdBinary = list_to_binary(integer_to_list(RawUserId)),
+            Headers = [ {<<"X-Forwarded-User">>, UserIdBinary},
                         {<<"Cache-Control">>, <<"no-cache, must-revalidate">>},
                         {<<"Pragma">>, <<"no-cache">>},
                         {<<"Content-Type">>, <<"application/json">>} 
                       ],
             {raw_answer, {200, <<"{\"status\":\"true\"}">>, Headers },  Req, State};
+        undefined -> 
+            false_response(403, Req, State); 
         {session, undefined, SessionKey}-> 
-            false_response(Req, State); 
+            false_response(403, Req, State); 
         {session, SessionObj, SessionKey} ->  
             ?CONSOLE_LOG("session obj for subauth ~p ~n",[SessionObj]),
             case get_key_dict(SessionObj, <<"user_id">>, false) of
-                false -> false_response(Req, State); 
+                false -> false_response(403, Req, State); 
                 UId ->
                     UserIdBinary = list_to_binary(integer_to_list(UId)),
                     Headers = [ {<<"X-Forwarded-User">>, UserIdBinary},
@@ -397,36 +404,65 @@ load_user_session(SessionKey)->
          
          undefined
   end.
-      
+
+ 
+check_token(Token, Ip)->
+    case mcd:get(?LOCAL_CACHE, auth_token_key(Token)) of
+        {ok, Val}->
+           % add saving to localcache
+%            {[{<<"ip">>,<<"127.0.0.1">>},{<<"user_id">>,<<"1213">>}]}
+
+           {Json} = json_decode(Val),
+           case lists:keysearch(<<"ip">>, 1, Json)  of
+                {value, {<<"ip">>, Ip}}->
+                    {value, {<<"user_id">>, RawUserId}} = lists:keysearch(<<"user_id">>, 1, Json),
+                    {api, RawUserId};
+                _ -> undefined
+            end;
+        _ ->
+         undefined
+    end.
 
 auth_user(Req, Body, State)->
        {Sign, Req3 }  = cowboy_req:header(<<"api_sign">>, Req, undefined),
        {PublicKey, Req4_ }  = cowboy_req:header(<<"public_key">>, Req3, undefined),
-       {Token, Req3_ }  = cowboy_req:header(<<"token">>, Req4_, undefined),
+       {Token, Req3__ }  = cowboy_req:header(<<"token">>, Req4_, undefined),
+       {IP, Req3_} = cowboy_req:header(<<"x-original-ip">>, Req3__, undefined), 
        {Headers, Req4 }  = cowboy_req:headers(Req3_),
-       {CookieSession, Req5} = cowboy_req:cookie(<<"sessionid">>, Req4, undefined), 
-
+       {CookieSession, Req5} = cowboy_req:cookie(<<"sessionid">>, Req4, undefined),
+       
        ?CONSOLE_LOG(" request from ~p ~n",[ CookieSession]),
        ?CONSOLE_LOG(" request public key ~p ~n",[ PublicKey ]),
        ?CONSOLE_LOG(" headers ~p ~n",[ Headers ]),
 
-       case CookieSession of 
-            undefined ->
+       case {is_atom(PublicKey), is_atom(Token), is_atom(CookieSession)} of
+            {false , _, _} ->
+            %% it's used for application
             {NewState, LocalKey, UserId} = case catch dict:fetch(State, PublicKey) of
                                                         {'EXIT', _ } -> {State, undefined, undefined};
                                                         {Value, User_Id} -> {State, Value, User_Id}
-                                            end,				    
-            case check_sign({Sign, LocalKey}, Body, State) of 
-                    true ->   { {api, UserId}, Req5};
-                    false ->  ?CONSOLE_LOG("salt false ~n", []), 
-                                {undefined, Req5}
-            end;
-            Session->
+                                            end,
+                                            case check_sign({Sign, LocalKey}, Body, State) of
+                                                 true ->   { {api, UserId}, Req5};
+                                                 false ->  ?CONSOLE_LOG("salt false ~n", []),
+                                                           {undefined, Req5}
+                                            end;
+            {_True, false, _False } -> 
+                    { check_token(Token, IP), Req5 };
+            {_True, _True, false } -> 
                 SessionObj =  load_user_session(django_session_key(CookieSession)),
                 ?CONSOLE_LOG(" load session  ~n",[]),
-                { {session, SessionObj, CookieSession}, Req5}
-            end     
+                { {session, SessionObj, CookieSession}, Req5};
+             {true, true, true} ->  {undefined, Req5}
+            end
 .
+
+auth_token_key(Token)->
+    <<?KEY_PREFIX, "token_", Token/binary>>.
+  
+
+
+      
 django_read_token(Session)->
     <<?KEY_PREFIX, "read_token", Session/binary>>.
   
