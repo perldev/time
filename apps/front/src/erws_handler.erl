@@ -84,7 +84,7 @@ websocket_info({deal_info, Msg}, Req, State)->
        ?CONSOLE_LOG("callback result from somebody ~p to ~p",[Msg, State]),
        {reply, {text, Msg}, Req, State};       
 websocket_info({http, {ReqestId,  { {HttpVer, 200, HTTP}, _Headers, Body} } }, Req, State )->
-    ?CONSOLE_LOG("get result from task child process ~p ~p ~n", [ReqestId,  { {HttpVer, Status, HTTP}, _Headers, Body} ]),
+    ?CONSOLE_LOG("get result from task child process ~p ~p ~n", [ReqestId,  { {HttpVer, 200, HTTP}, _Headers, Body} ]),
     Tasks =  State#chat_state.tasks,
     case lists:keysearch(ReqestId, 1, Tasks) of 
         {value, {ReqestId, Key, Command}} ->
